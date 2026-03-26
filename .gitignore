@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+
+# Local data exports
+*.json
+result/
+
+# Old versions
+nba-props-analyzer*.html
+
+# Claude config
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>NBA PROPS LAB</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#07090d; --bg2:#0c0f16; --bg3:#121720; --panel:#0e1219;
+  --border:#1a2233; --border2:#243044;
+  --cyan:#00e5ff; --orange:#ff6d00; --gold:#ffc400;
+  --green:#00e676; --red:#ff1744; --warn:#ffab00;
+  --text:#dce8f5; --muted:#4a6580; --muted2:#2a3d52;
+  --hdr:52px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:300;overflow:hidden;}
+
+header{
+  position:fixed;top:0;left:0;right:0;z-index:300;
+  height:var(--hdr);display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;background:var(--bg2);border-bottom:1px solid var(--border);
+}
+.wordmark{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:4px;color:var(--cyan);text-shadow:0 0 18px rgba(0,229,255,.3);}
+.header-right{display:flex;align-items:center;gap:8px;}
+.srv-pill{display:flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;padding:5px 9px;border-radius:4px;border:1px solid var(--border);color:var(--muted);transition:all .15s;}
+.srv-pill:hover{border-color:var(--border2);color:var(--text);}
+.sdot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.sdot.on{background:var(--green);box-shadow:0 0 4px rgba(0,230,118,.5);}
+.sdot.off{background:var(--red);}
+.sdot.checking{background:var(--warn);animation:pulse .8s infinite alternate;}
+@keyframes pulse{from{opacity:.4}to{opacity:1}}
+.back-btn{display:none;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--cyan);cursor:pointer;padding:5px 9px;border-radius:4px;border:1px solid rgba(0,229,255,.2);transition:all .15s;}
+.back-btn:hover{background:rgba(0,229,255,.05);}
+.back-btn.show{display:block;}
+
+.scroll-area{position:fixed;top:var(--hdr);bottom:0;left:0;right:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+
+.page{display:none;min-height:100%;}
+.page.active{display:block;}
+
+/* ── SEARCH ── */
+.search-wrap{display:flex;flex-direction:column;align-items:center;padding:48px 24px 32px;max-width:480px;margin:0 auto;}
+.search-hero{font-family:'Bebas Neue',sans-serif;font-size:48px;letter-spacing:6px;color:var(--cyan);text-shadow:0 0 40px rgba(0,229,255,.18);margin-bottom:4px;}
+.search-sub{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--muted);margin-bottom:36px;}
+.search-field{width:100%;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);padding:14px 16px;font-family:'DM Sans',sans-serif;font-size:16px;outline:none;border-radius:8px;transition:border-color .2s;margin-bottom:10px;}
+.search-field::placeholder{color:var(--muted);}
+.search-field:focus{border-color:var(--cyan);}
+.search-go{width:100%;background:var(--cyan);border:none;color:#000;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;padding:14px;border-radius:8px;cursor:pointer;transition:opacity .15s;margin-bottom:24px;}
+.search-go:hover{opacity:.88;}
+.search-go:disabled{opacity:.3;cursor:default;}
+.section-lbl{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:3px;color:var(--muted);margin-bottom:10px;align-self:flex-start;}
+.chip-row{display:flex;flex-wrap:wrap;gap:8px;width:100%;}
+.chip{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;}
+.chip:hover{border-color:var(--cyan);color:var(--cyan);}
+.chip-dot{width:4px;height:4px;border-radius:50%;background:var(--green);}
+.chip.cached{border-color:rgba(0,230,118,.2);color:rgba(0,230,118,.7);}
+
+/* ── LOADING ── */
+.loading-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:20px;padding:32px;}
+.loading-player{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:4px;color:var(--text);}
+.dots{display:flex;gap:6px;}
+.dots span{width:8px;height:8px;border-radius:50%;background:var(--cyan);animation:dot 1.4s infinite;}
+.dots span:nth-child(2){animation-delay:.2s;}
+.dots span:nth-child(3){animation-delay:.4s;}
+@keyframes dot{0%,80%,100%{opacity:.15;transform:scale(.7)}40%{opacity:1;transform:scale(1)}}
+.loading-msg{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:1px;text-align:center;max-width:280px;}
+
+/* ── ANALYSIS ── */
+.analysis-wrap{max-width:480px;margin:0 auto;padding-bottom:24px;}
+
+.player-banner{background:linear-gradient(135deg,var(--bg2),var(--bg3));border-bottom:1px solid var(--border);padding:16px;position:relative;overflow:hidden;}
+.player-banner::before{content:attr(data-jersey);position:absolute;right:8px;top:-10px;font-family:'Bebas Neue',sans-serif;font-size:110px;color:rgba(255,255,255,.025);line-height:1;pointer-events:none;}
+.banner-top{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.b-avatar{width:52px;height:52px;border:2px solid var(--cyan);border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--cyan);box-shadow:0 0 12px rgba(0,229,255,.12);flex-shrink:0;}
+.b-name{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;line-height:1;margin-bottom:5px;}
+.b-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.btag{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.5px;}
+.btag b{color:var(--text);font-weight:400;}
+.vs-chip{background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.15);color:var(--cyan);padding:2px 7px;border-radius:3px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.5px;}
+.save-row{display:flex;align-items:center;justify-content:space-between;margin-top:10px;}
+.save-btn{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--muted);cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:3px;transition:all .15s;}
+.save-btn:hover{border-color:var(--cyan);color:var(--cyan);}
+.fetched-at{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted2);}
+.risk-flags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.risk-flag{background:rgba(255,171,0,.08);border:1px solid rgba(255,171,0,.2);color:var(--warn);padding:2px 8px;border-radius:3px;font-family:'DM Mono',monospace;font-size:9px;}
+.season-row{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:12px;}
+.sstat{background:var(--bg);border-radius:5px;padding:7px 4px;text-align:center;}
+.sstat-val{font-family:'Bebas Neue',sans-serif;font-size:18px;line-height:1;color:var(--text);}
+.sstat-lbl{font-family:'DM Mono',monospace;font-size:7px;color:var(--muted);letter-spacing:.5px;margin-top:1px;}
+
+.tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+.tab{flex:1;padding:12px 4px;text-align:center;cursor:pointer;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;}
+.tab.active{color:var(--cyan);border-bottom-color:var(--cyan);}
+.tab-panel{display:none;padding:16px;}
+.tab-panel.active{display:block;}
+
+.sec-lbl{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.sec-lbl::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* OVERVIEW */
+.trend-tbl{width:100%;border-collapse:collapse;margin-bottom:16px;}
+.trend-tbl th{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--muted);text-align:right;padding:4px 6px;border-bottom:1px solid var(--border);}
+.trend-tbl th:first-child{text-align:left;}
+.trend-tbl td{font-family:'DM Mono',monospace;font-size:11px;padding:5px 6px;text-align:right;border-bottom:1px solid rgba(26,34,51,.5);}
+.trend-tbl td:first-child{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;color:var(--muted);text-align:left;}
+.hot{color:var(--green);} .cold{color:var(--red);} .neu{color:var(--text);}
+.q-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.q-lbl{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);width:18px;flex-shrink:0;}
+.q-track{flex:1;height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;}
+.q-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--cyan),rgba(0,229,255,.4));transition:width .5s;}
+.q-num{font-family:'Bebas Neue',sans-serif;font-size:13px;width:28px;text-align:right;}
+
+/* PROPS */
+.prop-cards{display:flex;flex-direction:column;gap:10px;}
+.prop-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px;}
+.prop-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.prop-type{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:3px;color:var(--muted);}
+.verdict{font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;padding:3px 8px;border-radius:3px;}
+.v-so{background:rgba(0,230,118,.12);border:1px solid rgba(0,230,118,.3);color:var(--green);}
+.v-lo{background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.15);color:var(--green);}
+.v-n{background:rgba(74,101,128,.1);border:1px solid var(--border);color:var(--muted);}
+.v-lu{background:rgba(255,23,68,.06);border:1px solid rgba(255,23,68,.15);color:var(--red);}
+.v-su{background:rgba(255,23,68,.12);border:1px solid rgba(255,23,68,.3);color:var(--red);}
+.v-nl{background:transparent;border:1px solid var(--border);color:var(--muted);}
+.line-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.line-lbl{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);flex-shrink:0;}
+.line-inp{background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:'Bebas Neue',sans-serif;font-size:20px;padding:4px 8px;border-radius:5px;width:80px;outline:none;transition:border-color .15s;}
+.line-inp:focus{border-color:var(--cyan);}
+.line-avg{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);}
+.line-avg b{color:var(--text);}
+.hr-rows{display:flex;flex-direction:column;gap:6px;}
+.hr-row{display:grid;grid-template-columns:52px 1fr 38px;gap:8px;align-items:center;}
+.hr-lbl{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);}
+.hr-track{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.hr-fill{height:100%;border-radius:3px;transition:width .5s;}
+.c-so{background:var(--green);}
+.c-lo{background:rgba(0,230,118,.6);}
+.c-n{background:var(--muted2);}
+.c-lu{background:rgba(255,23,68,.5);}
+.c-su{background:var(--red);}
+.hr-pct{font-family:'DM Mono',monospace;font-size:9px;text-align:right;}
+.p-so{color:var(--green);} .p-lo{color:rgba(0,230,118,.8);} .p-n{color:var(--muted);}
+.p-lu{color:rgba(255,23,68,.7);} .p-su{color:var(--red);}
+.splits{display:flex;gap:8px;margin-top:10px;}
+.split{flex:1;background:var(--bg3);border-radius:5px;padding:6px 8px;text-align:center;}
+.spl-lbl{font-family:'DM Mono',monospace;font-size:7px;color:var(--muted);letter-spacing:.5px;margin-bottom:3px;}
+.spl-val{font-family:'Bebas Neue',sans-serif;font-size:18px;line-height:1.1;}
+.spl-sub{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);}
+
+/* LOG */
+.log-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.log-tbl{width:100%;border-collapse:collapse;min-width:700px;}
+.log-tbl th{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--muted);text-align:right;padding:6px 5px;border-bottom:1px solid var(--border);white-space:nowrap;}
+.log-tbl th:first-child,.log-tbl th:nth-child(2){text-align:left;}
+.log-tbl td{font-family:'DM Mono',monospace;font-size:10px;padding:6px 5px;text-align:right;border-bottom:1px solid rgba(26,34,51,.4);}
+.log-tbl td:first-child{text-align:left;color:var(--muted);}
+.log-tbl td:nth-child(2){text-align:left;}
+.log-tbl tr:hover td{background:rgba(255,255,255,.02);}
+.hit{color:var(--green);}
+.badge{display:inline-block;padding:1px 4px;border-radius:2px;font-size:8px;vertical-align:middle;margin-left:2px;}
+.bh{background:rgba(0,229,255,.1);color:var(--cyan);}
+.ba{background:rgba(74,101,128,.15);color:var(--muted);}
+.bb{background:rgba(255,171,0,.1);color:var(--warn);}
+
+/* MATCHUP */
+.def-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.def-card{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:10px;}
+.def-lbl{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;}
+.def-val{font-family:'Bebas Neue',sans-serif;font-size:26px;line-height:1;}
+.def-note{font-family:'DM Mono',monospace;font-size:8px;margin-top:2px;}
+.dnote-good{color:var(--red);} .dnote-bad{color:var(--green);} .dnote-mid{color:var(--warn);}
+.dbar-row{display:grid;grid-template-columns:58px 1fr 60px;gap:8px;align-items:center;margin-bottom:7px;}
+.dbar-lbl{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);}
+.dbar-track{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.dbar-fill{height:100%;border-radius:3px;}
+.df-easy{background:var(--green);} .df-hard{background:var(--red);} .df-mid{background:var(--warn);}
+.dbar-val{font-family:'DM Mono',monospace;font-size:9px;color:var(--text);text-align:right;}
+.info-row{display:flex;gap:8px;margin-bottom:8px;}
+.info-card{background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:8px 10px;flex:1;}
+.ic-lbl{font-family:'DM Mono',monospace;font-size:7px;color:var(--muted);letter-spacing:1px;margin-bottom:3px;}
+.ic-val{font-family:'DM Mono',monospace;font-size:10px;color:var(--text);}
+
+/* INTEL */
+.intel-row{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:10px 16px 6px;scrollbar-width:none;background:var(--bg2);border-bottom:1px solid var(--border);}
+.intel-row::-webkit-scrollbar{display:none;}
+.intel-chip{flex-shrink:0;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:9px 12px;min-width:108px;}
+.intel-chip.hot{border-color:rgba(0,230,118,.3);}
+.intel-chip.cold{border-color:rgba(255,23,68,.3);}
+.intel-chip.warn{border-color:rgba(255,171,0,.3);}
+.intel-chip.hot .ic2-val{color:var(--green);}
+.intel-chip.cold .ic2-val{color:var(--red);}
+.intel-chip.warn .ic2-val{color:var(--warn);}
+.ic2-lbl{font-family:'DM Mono',monospace;font-size:7px;letter-spacing:2px;color:var(--muted);margin-bottom:3px;}
+.ic2-val{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;line-height:1.2;color:var(--text);}
+.ic2-sub{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);margin-top:2px;}
+
+/* ERROR */
+.error-box{background:rgba(255,23,68,.06);border:1px solid rgba(255,23,68,.2);border-radius:8px;padding:16px;margin:20px 16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--red);line-height:1.7;}
+.error-box b{font-weight:500;}
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wordmark">PROPS LAB</div>
+  <div class="header-right">
+    <div class="back-btn" id="backBtn">← SEARCH</div>
+    <div class="srv-pill" id="srvPill" title="Click to re-check server">
+      <span class="sdot checking" id="srvDot"></span>
+      <span id="srvLabel">localhost:5000</span>
+    </div>
+  </div>
+</header>
+
+<div class="scroll-area" id="scrollArea">
+
+  <!-- SEARCH -->
+  <div class="page active" id="page-search">
+    <div class="search-wrap">
+      <div class="search-hero">PROPS LAB</div>
+      <div class="search-sub">NBA PLAYER ANALYSIS · 2025–26</div>
+      <input class="search-field" id="searchField" type="text" placeholder="Player name (e.g. Wembanyama)" autocomplete="off">
+      <button class="search-go" id="searchBtn">ANALYZE PLAYER</button>
+      <div class="section-lbl" id="recentLabel" style="display:none">RECENT · CACHED</div>
+      <div class="chip-row" id="recentChips"></div>
+    </div>
+  </div>
+
+  <!-- LOADING -->
+  <div class="page" id="page-loading">
+    <div class="loading-wrap">
+      <div class="loading-player" id="loadingName"></div>
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div class="loading-msg" id="loadingMsg">Fetching game log & stats...</div>
+    </div>
+  </div>
+
+  <!-- ANALYSIS -->
+  <div class="page" id="page-analysis">
+    <div class="analysis-wrap">
+
+      <div class="player-banner" id="playerBanner" data-jersey="">
+        <div class="banner-top">
+          <div class="b-avatar" id="bAvatar"></div>
+          <div>
+            <div class="b-name" id="bName"></div>
+            <div class="b-meta" id="bMeta"></div>
+          </div>
+        </div>
+        <div class="season-row" id="seasonRow"></div>
+        <div class="risk-flags" id="riskFlags"></div>
+        <div class="save-row">
+          <div class="fetched-at" id="fetchedAt"></div>
+          <div class="save-btn" id="saveJsonBtn">↓ SAVE JSON</div>
+        </div>
+      </div>
+
+      <div id="intelRow" class="intel-row"></div>
+
+      <div class="tabs">
+        <div class="tab active" data-t="overview">OVERVIEW</div>
+        <div class="tab" data-t="props">PROPS</div>
+        <div class="tab" data-t="log">LOG</div>
+        <div class="tab" data-t="matchup">MATCHUP</div>
+      </div>
+
+      <div class="tab-panel active" id="tp-overview">
+        <div class="sec-lbl">TREND — L5 / L10 / SEASON</div>
+        <table class="trend-tbl" id="trendTbl"></table>
+        <div class="sec-lbl" style="margin-top:16px;">MINUTES LOAD — LAST 10</div>
+        <div id="usgBars"></div>
+      </div>
+
+      <div class="tab-panel" id="tp-props">
+        <div class="prop-cards" id="propCards"></div>
+      </div>
+
+      <div class="tab-panel" id="tp-log">
+        <div class="log-scroll">
+          <table class="log-tbl" id="logTbl"></table>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tp-matchup">
+        <div id="matchupContent"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ERROR -->
+  <div class="page" id="page-error">
+    <div class="error-box" id="errorBox"></div>
+    <div style="padding:0 16px;">
+      <button class="search-go" onclick="goSearch()">← TRY AGAIN</button>
+    </div>
+  </div>
+
+</div>
+
+
+<script>
+'use strict';
+
+// ── CONSTANTS ──────────────────────────────────────────────────────────────
+const PROP_TYPES = [
+  { key:'pts',  label:'POINTS',      combo:null },
+  { key:'3pm',  label:'3-POINTERS',  combo:null },
+  { key:'reb',  label:'REBOUNDS',    combo:null },
+  { key:'ast',  label:'ASSISTS',     combo:null },
+  { key:'pra',  label:'PTS+REB+AST', combo:['pts','reb','ast'] },
+  { key:'pr',   label:'PTS+REB',     combo:['pts','reb'] },
+  { key:'pa',   label:'PTS+AST',     combo:['pts','ast'] },
+];
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+let currentPlayer = null;
+const propLines = {};
+
+// ── DOM REFS ───────────────────────────────────────────────────────────────
+function $id(id) { return document.getElementById(id); }
+
+const API_BASE = 'http://localhost:5000';
+
+// ── STARTUP ───────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  checkServer();
+  renderRecent();
+
+  $id('searchBtn').addEventListener('click', handleSearch);
+  $id('searchField').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') handleSearch();
+  });
+  $id('srvPill').addEventListener('click', checkServer);
+  $id('saveJsonBtn').addEventListener('click', saveJson);
+  $id('backBtn').addEventListener('click', goSearch);
+  document.querySelectorAll('.tab').forEach(function(tab) {
+    tab.addEventListener('click', function() { switchTab(tab.dataset.t); });
+  });
+});
+
+// ── SERVER STATUS ──────────────────────────────────────────────────────────
+let serverOnline = false;
+async function checkServer() {
+  $id('srvDot').className = 'sdot checking';
+  $id('srvLabel').textContent = 'checking...';
+  try {
+    const r = await fetch(API_BASE + '/api/health', { signal: AbortSignal.timeout(3000) });
+    serverOnline = r.ok;
+  } catch(e) {
+    serverOnline = false;
+  }
+  $id('srvDot').className = 'sdot ' + (serverOnline ? 'on' : 'off');
+  $id('srvLabel').textContent = serverOnline ? 'API READY' : 'SERVER DOWN';
+}
+
+// ── NAVIGATION ─────────────────────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  $id('page-' + id).classList.add('active');
+  $id('scrollArea').scrollTop = 0;
+  $id('backBtn').className = 'back-btn' + (id === 'analysis' ? ' show' : '');
+}
+function goSearch() { showPage('search'); }
+
+// ── RECENT / CACHE ─────────────────────────────────────────────────────────
+function getCache() {
+  try { return JSON.parse(localStorage.getItem('nba_cache') || '{}'); } catch(e) { return {}; }
+}
+function saveToCache(name, data) {
+  var cache = getCache();
+  cache[name.toLowerCase()] = { data: data, ts: Date.now() };
+  // Keep last 10
+  var keys = Object.keys(cache);
+  if (keys.length > 10) {
+    keys.sort(function(a,b){ return cache[a].ts - cache[b].ts; });
+    delete cache[keys[0]];
+  }
+  localStorage.setItem('nba_cache', JSON.stringify(cache));
+}
+function loadFromCache(name) {
+  var cache = getCache();
+  var entry = cache[name.toLowerCase()];
+  return entry ? entry : null;
+}
+function getRecentNames() {
+  try { return JSON.parse(localStorage.getItem('nba_recent') || '[]'); } catch(e) { return []; }
+}
+function pushRecent(name) {
+  var r = getRecentNames().filter(function(x){ return x.toLowerCase() !== name.toLowerCase(); });
+  r.unshift(name);
+  localStorage.setItem('nba_recent', JSON.stringify(r.slice(0, 8)));
+}
+function renderRecent() {
+  var names = getRecentNames();
+  var cache = getCache();
+  var label = $id('recentLabel');
+  var chips = $id('recentChips');
+  if (!names.length) { label.style.display = 'none'; return; }
+  label.style.display = 'block';
+  chips.innerHTML = names.map(function(n) {
+    var isCached = !!cache[n.toLowerCase()];
+    return '<div class="chip' + (isCached ? ' cached' : '') + '" data-name="' + n + '">'
+      + (isCached ? '<span class="chip-dot"></span>' : '')
+      + n
+      + '</div>';
+  }).join('');
+  chips.querySelectorAll('.chip').forEach(function(el) {
+    el.addEventListener('click', function() { loadPlayer(el.dataset.name); });
+  });
+}
+
+// ── SEARCH ─────────────────────────────────────────────────────────────────
+function handleSearch() {
+  var name = $id('searchField').value.trim();
+  if (!name) { $id('searchField').focus(); return; }
+  loadPlayer(name);
+}
+
+function loadPlayer(name) {
+  // Check cache first (< 2 hours old)
+  var cached = loadFromCache(name);
+  if (cached) {
+    var ageMin = Math.round((Date.now() - cached.ts) / 60000);
+    if (ageMin < 120) {
+      currentPlayer = cached.data;
+      pushRecent(name);
+      renderRecent();
+      renderAnalysis(currentPlayer, ageMin + 'm ago (cached)');
+      showPage('analysis');
+      return;
+    }
+  }
+
+  if (!serverOnline) {
+    $id('errorBox').innerHTML = '<b>Server not running</b><br><br>'
+      + 'Start the Flask backend first:<br><code>python server.py</code>';
+    showPage('error');
+    return;
+  }
+
+  pushRecent(name);
+  renderRecent();
+  $id('loadingName').textContent = name.toUpperCase();
+  $id('loadingMsg').textContent = 'Querying stats.nba.com...';
+  showPage('loading');
+  fetchFromAPI(name);
+}
+
+// ── API FETCH ──────────────────────────────────────────────────────────────
+async function fetchFromAPI(playerName) {
+  try {
+    $id('loadingMsg').textContent = 'Fetching from stats.nba.com...';
+
+    const response = await fetch(
+      API_BASE + '/api/player?name=' + encodeURIComponent(playerName),
+      { signal: AbortSignal.timeout(60000) }
+    );
+
+    if (!response.ok) {
+      const body = await response.json().catch(function() { return {}; });
+      throw new Error(body.error || ('HTTP ' + response.status));
+    }
+
+    $id('loadingMsg').textContent = 'Building analysis...';
+    const playerData = await response.json();
+    playerData._fetchedAt = new Date().toISOString();
+
+    saveToCache(playerName, playerData);
+    downloadJson(playerData);
+
+    currentPlayer = playerData;
+    renderAnalysis(currentPlayer, 'just now');
+    showPage('analysis');
+
+  } catch (err) {
+    $id('errorBox').innerHTML = '<b>Error: ' + escHtml(err.message) + '</b><br><br>'
+      + 'Make sure <code>python server.py</code> is running on port 5000.';
+    showPage('error');
+  }
+}
+
+// ── AUTO-SAVE JSON ─────────────────────────────────────────────────────────
+function downloadJson(data) {
+  try {
+    const name = (data.name || 'player').replace(/\s+/g, '_').toLowerCase();
+    const date = new Date().toISOString().split('T')[0];
+    const filename = 'nba_' + name + '_' + date + '.json';
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch(e) { /* download failed silently */ }
+}
+
+function saveJson() {
+  if (currentPlayer) downloadJson(currentPlayer);
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────────────
+function renderAnalysis(d, age) {
+  // Reset prop lines for new player
+  Object.keys(propLines).forEach(function(k) { delete propLines[k]; });
+
+  renderBanner(d, age);
+  renderIntel(d);
+  renderOverview(d);
+  renderProps(d);
+  renderLog(d);
+  renderMatchup(d);
+  switchTab('overview');
+}
+
+function renderBanner(d, age) {
+  const sa = d.seasonAvg || {};
+  $id('playerBanner').setAttribute('data-jersey', d.jersey || '');
+  $id('bAvatar').textContent = initials(d.name);
+  $id('bName').textContent = d.name || '';
+  const opp = d.opponent
+    ? '<span class="vs-chip">' + (d.isHome ? 'vs' : '@') + ' ' + d.opponent + '</span>'
+    : '';
+  const gd = d.gameDate ? '<span class="btag">' + d.gameDate + '</span>' : '';
+  $id('bMeta').innerHTML = ''
+    + '<span class="btag"><b>' + (d.team||'') + '</b></span>'
+    + '<span class="btag"><b>' + (d.position||'') + '</b> · #' + (d.jersey||'') + '</span>'
+    + opp + gd;
+  $id('fetchedAt').textContent = age ? 'Fetched: ' + age : '';
+  $id('riskFlags').innerHTML = (d.riskFlags||[]).map(function(f){
+    return '<span class="risk-flag">' + escHtml(f) + '</span>';
+  }).join('');
+  $id('seasonRow').innerHTML = [
+    {v:fmt(sa.pts),  l:'PTS'},
+    {v:fmt(sa['3pm']),l:'3PM'},
+    {v:fmt(sa.reb),  l:'REB'},
+    {v:fmt(sa.ast),  l:'AST'},
+    {v:fmt(sa.min),  l:'MIN'},
+    {v:fmt(sa.usg),  l:'USG%'},
+  ].map(function(s){
+    return '<div class="sstat"><div class="sstat-val">' + s.v + '</div><div class="sstat-lbl">' + s.l + '</div></div>';
+  }).join('');
+}
+
+function renderOverview(d) {
+  const games = d.games || [];
+  const sa = d.seasonAvg || {};
+  const SK = [{k:'pts',l:'PTS'},{k:'3pm',l:'3PM'},{k:'reb',l:'REB'},{k:'ast',l:'AST'}];
+  let html = '<thead><tr><th>STAT</th><th>L5</th><th>L10</th><th>SEASON</th></tr></thead><tbody>';
+  SK.forEach(function(s) {
+    const sv = sa[s.k] || 0;
+    const l10 = avg(games.slice(0,10).map(function(g){ return gv(g,s.k); }));
+    const l5  = avg(games.slice(0,5).map(function(g){ return gv(g,s.k); }));
+    const cl = l5 > sv*1.05 ? 'hot' : l5 < sv*0.95 ? 'cold' : 'neu';
+    html += '<tr><td>' + s.l + '</td>'
+      + '<td class="' + cl + '">' + fmt(l5) + '</td>'
+      + '<td>' + fmt(l10) + '</td>'
+      + '<td>' + fmt(sv) + '</td></tr>';
+  });
+  html += '</tbody>';
+  $id('trendTbl').innerHTML = html;
+
+  // Minutes load bars (last 10 games)
+  const minArr = games.slice(0, 10);
+  const mmax = Math.max.apply(null, minArr.map(function(g){ return g.min||0; }).concat([1]));
+  $id('usgBars').innerHTML = minArr.map(function(g, i){
+    const v = g.min || 0;
+    const lbl = g.date ? g.date.slice(5) : 'G'+(i+1);
+    const wlColor = g.wl === 'W' ? 'var(--green)' : g.wl === 'L' ? 'var(--red)' : 'var(--muted)';
+    return '<div class="q-row">'
+      + '<div class="q-lbl" style="font-size:8px;width:36px;color:'+wlColor+'">'+lbl+'</div>'
+      + '<div class="q-track"><div class="q-fill" style="width:'+pct(v,mmax)+'%;background:linear-gradient(90deg,var(--gold),rgba(255,196,0,.4))"></div></div>'
+      + '<div class="q-num" style="font-size:11px;">'+v.toFixed(1)+'</div></div>';
+  }).join('');
+}
+
+function renderProps(d) {
+  const games = d.games || [];
+  const sa = d.seasonAvg || {};
+  $id('propCards').innerHTML = PROP_TYPES.map(function(pt){
+    return buildPropCard(pt, games, sa);
+  }).join('');
+  // Attach input listeners
+  $id('propCards').querySelectorAll('.line-inp').forEach(function(inp){
+    inp.addEventListener('input', function(){
+      propLines[this.dataset.prop] = this.value;
+      renderProps(d);
+      // Refresh log highlights too
+      renderLog(d);
+    });
+  });
+}
+
+function buildPropCard(pt, games, sa) {
+  const line = propLines[pt.key] !== undefined ? propLines[pt.key] : '';
+  const lineNum = parseFloat(line);
+  const hasLine = line !== '' && !isNaN(lineNum);
+  const seasonAvgVal = pt.combo
+    ? pt.combo.reduce(function(s,k){ return s+(sa[k]||0); }, 0)
+    : (sa[pt.key] || 0);
+  const vals = games.map(function(g){
+    return pt.combo
+      ? pt.combo.reduce(function(s,k){ return s+(gv(g,k)||0); }, 0)
+      : gv(g, pt.key);
+  });
+
+  let verdict = 'nl';
+  let hrHtml = '';
+  let splitHtml = '';
+
+  if (hasLine) {
+    const makeHR = function(slice, lbl) {
+      if (!slice.length) return null;
+      const hits = slice.filter(function(v){ return v >= lineNum; }).length;
+      const p = hits / slice.length;
+      const c = cls(p);
+      return { hits: hits, total: slice.length, p: p, c: c, lbl: lbl };
+    };
+    const hrSeason = makeHR(vals, 'SEASON');
+    const hrL10    = makeHR(vals.slice(0,10), 'L10');
+    const hrL5     = makeHR(vals.slice(0,5), 'L5');
+
+    if (hrL10) verdict = getVerdict(hrL10.p);
+
+    const hrRow = function(h) {
+      if (!h) return '';
+      return '<div class="hr-row">'
+        + '<div class="hr-lbl">'+h.lbl+' '+h.hits+'/'+h.total+'</div>'
+        + '<div class="hr-track"><div class="hr-fill c-'+h.c+'" style="width:'+Math.round(h.p*100)+'%"></div></div>'
+        + '<div class="hr-pct p-'+h.c+'">'+Math.round(h.p*100)+'%</div>'
+        + '</div>';
+    };
+    hrHtml = '<div class="hr-rows">' + hrRow(hrSeason) + hrRow(hrL10) + hrRow(hrL5) + '</div>';
+
+    // Splits
+    const split = function(filter, key) {
+      const gs = games.filter(filter);
+      const vs = gs.map(function(g){
+        return pt.combo ? pt.combo.reduce(function(s,k){ return s+(gv(g,k)||0); },0) : gv(g,pt.key);
+      });
+      const hits = vs.filter(function(v){ return v >= lineNum; }).length;
+      const c = gs.length ? cls(hits/gs.length) : 'n';
+      return { str: gs.length ? hits+'/'+gs.length : '—', cls:'p-'+c, n:gs.length };
+    };
+    const sH   = split(function(g){ return g.home; }, 'home');
+    const sA   = split(function(g){ return !g.home; }, 'away');
+    const sB2B = split(function(g){ return g.b2b; }, 'b2b');
+    const sR   = split(function(g){ return !g.b2b; }, 'rest');
+    const sp = function(lbl,s){
+      return '<div class="split"><div class="spl-lbl">'+lbl+'</div>'
+        + '<div class="spl-val '+s.cls+'">'+s.str+'</div>'
+        + '<div class="spl-sub">'+s.n+' G</div></div>';
+    };
+    splitHtml = '<div class="splits">'+sp('HOME',sH)+sp('AWAY',sA)+sp('B2B',sB2B)+sp('REST',sR)+'</div>';
+  }
+
+  const vLabel = {nl:'SET LINE',so:'STRONG OVER',lo:'LEAN OVER',n:'NEUTRAL',lu:'LEAN UNDER',su:'STRONG UNDER'}[verdict] || 'SET LINE';
+  const vCls   = {nl:'nl',so:'so',lo:'lo',n:'n',lu:'lu',su:'su'}[verdict] || 'nl';
+
+  // L5 streak dots (newest = left)
+  var streakHtml = '';
+  if (hasLine) {
+    var dots = vals.slice(0, 5).map(function(v) {
+      var hit = v >= lineNum;
+      return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'
+        + (hit ? 'var(--green)' : 'var(--red)') + ';opacity:' + (hit ? '1' : '.5') + '"></span>';
+    }).join('');
+    streakHtml = '<div style="display:flex;align-items:center;gap:5px;margin-top:9px;">'
+      + '<span style="font-family:DM Mono,monospace;font-size:7px;color:var(--muted);letter-spacing:1px;margin-right:2px;">L5</span>'
+      + dots + '</div>';
+  }
+
+  return '<div class="prop-card">'
+    + '<div class="prop-head"><div class="prop-type">'+pt.label+'</div><div class="verdict v-'+vCls+'">'+vLabel+'</div></div>'
+    + '<div class="line-row">'
+    +   '<div class="line-lbl">LINE</div>'
+    +   '<input class="line-inp" type="number" step="0.5" placeholder="—" value="'+escHtml(line)+'" data-prop="'+pt.key+'">'
+    +   '<div class="line-avg">AVG <b>'+fmt(seasonAvgVal)+'</b></div>'
+    + '</div>'
+    + hrHtml
+    + splitHtml
+    + streakHtml
+    + '</div>';
+}
+
+function renderLog(d) {
+  const games = (d.games || []).slice(0, 30);
+  if (!games.length) {
+    $id('logTbl').innerHTML = '<tr><td style="color:var(--muted);padding:16px;">No game data available.</td></tr>';
+    return;
+  }
+  let html = '<thead><tr>'
+    + '<th style="text-align:left">DATE</th>'
+    + '<th style="text-align:left">OPP</th>'
+    + '<th>MIN</th><th>W/L</th><th>PTS</th><th>3PM</th><th>3PA</th><th>REB</th><th>AST</th><th>TOV</th><th>STL</th><th>BLK</th><th>+/-</th>'
+    + '</tr></thead><tbody>';
+
+  games.forEach(function(g) {
+    const isOver = function(k) {
+      const l = parseFloat(propLines[k]);
+      return !isNaN(l) && gv(g,k) >= l;
+    };
+    const td = function(val, k) {
+      const h = k && isOver(k) ? ' class="hit"' : '';
+      return '<td' + h + '>' + (val !== null && val !== undefined ? val : '—') + '</td>';
+    };
+    const badges = (g.home ? '<span class="badge bh">H</span>' : '<span class="badge ba">A</span>')
+      + (g.b2b ? '<span class="badge bb">B2B</span>' : '');
+    const wlColor = g.wl === 'W' ? 'color:var(--green)' : g.wl === 'L' ? 'color:var(--red)' : '';
+    const pm = g.pm !== undefined && g.pm !== null ? g.pm : null;
+    const pmStr = pm !== null ? (pm > 0 ? '+'+pm : String(pm)) : '—';
+    const pmColor = pm > 0 ? 'color:var(--green)' : pm < 0 ? 'color:var(--red)' : '';
+    html += '<tr>'
+      + '<td>' + (g.date ? g.date.slice(5) : '—') + '</td>'
+      + '<td>' + (g.opp||'—') + badges + '</td>'
+      + td(g.min)
+      + '<td style="' + wlColor + '">' + (g.wl || '—') + '</td>'
+      + td(g.pts, 'pts')
+      + td(g['3pm'], '3pm')
+      + td(g.fg3a)
+      + td(g.reb, 'reb')
+      + td(g.ast, 'ast')
+      + td(g.tov)
+      + td(g.stl)
+      + td(g.blk)
+      + '<td style="' + pmColor + '">' + pmStr + '</td>'
+      + '</tr>';
+  });
+  html += '</tbody>';
+  $id('logTbl').innerHTML = html;
+}
+
+function renderIntel(d) {
+  const el = $id('intelRow');
+  if (!el) return;
+  const sa = d.seasonAvg || {};
+  const games = d.games || [];
+  const l5 = games.slice(0, 5);
+  const l10 = games.slice(0, 10);
+  if (!games.length) { el.innerHTML = ''; return; }
+
+  const avg = function(arr, k) {
+    if (!arr.length) return 0;
+    return arr.reduce(function(s,g){ return s + (g[k]||0); }, 0) / arr.length;
+  };
+  const chips = [];
+
+  // FORM — L5 pts vs season avg
+  const l5pts = avg(l5, 'pts');
+  const saPts = sa.pts || 0;
+  if (saPts > 0) {
+    const diff = (l5pts - saPts) / saPts;
+    const cls = diff > 0.1 ? 'hot' : diff < -0.1 ? 'cold' : '';
+    const lbl = diff > 0.1 ? 'HOT' : diff < -0.1 ? 'COLD' : 'NEUTRAL';
+    chips.push({ label:'FORM', val: lbl, sub: 'L5 ' + l5pts.toFixed(1) + ' pts', cls });
+  }
+
+  // LOAD — L5 min vs season avg
+  const l5min = avg(l5, 'min');
+  const saMin = sa.min || 0;
+  if (saMin > 0) {
+    const minDiff = l5min - saMin;
+    const cls = minDiff < -1.5 ? 'warn' : '';
+    chips.push({ label:'LOAD', val: l5min.toFixed(0) + ' min', sub: (minDiff >= 0 ? '+' : '') + minDiff.toFixed(1) + ' vs avg', cls });
+  }
+
+  // 3PT FORM — L5 3PM vs season avg
+  const l5tpm = avg(l5, '3pm');
+  const sa3pm = sa['3pm'] || 0;
+  if (sa3pm > 0) {
+    const d3 = l5tpm - sa3pm;
+    const cls = d3 > 0.3 ? 'hot' : d3 < -0.3 ? 'cold' : '';
+    chips.push({ label:'3PT FORM', val: l5tpm.toFixed(1) + '/g', sub: (d3 >= 0 ? '+' : '') + d3.toFixed(1) + ' vs avg', cls });
+  }
+
+  // MATCHUP — opp pts allowed vs league avg
+  const od = d.opponentDef;
+  if (od && od.ptsAllowed && od.leagueAvgPts) {
+    const r = od.ptsAllowed / od.leagueAvgPts;
+    const cls = r > 1.06 ? 'hot' : r < 0.94 ? 'cold' : '';
+    const lbl = r > 1.06 ? 'FAVORABLE' : r < 0.94 ? 'TOUGH' : 'NEUTRAL';
+    chips.push({ label:'MATCHUP', val: lbl, sub: od.ptsAllowed.toFixed(1) + ' pts allowed', cls });
+  }
+
+  // CONSISTENCY — CV on L10 pts
+  if (l10.length >= 5) {
+    const ptsList = l10.map(function(g){ return g.pts || 0; });
+    const mean = ptsList.reduce(function(a,b){ return a+b; },0) / ptsList.length;
+    const variance = ptsList.reduce(function(s,v){ return s + Math.pow(v-mean,2); },0) / ptsList.length;
+    const cv = mean > 0 ? Math.sqrt(variance) / mean : 1;
+    const cls = cv < 0.25 ? 'hot' : cv > 0.4 ? 'warn' : '';
+    const lbl = cv < 0.25 ? 'CONSISTENT' : cv > 0.4 ? 'VOLATILE' : 'MODERATE';
+    chips.push({ label:'CONSISTENCY', val: lbl, sub: 'CV ' + (cv * 100).toFixed(0) + '%', cls });
+  }
+
+  // B2B RISK — next game is B2B
+  if (d.gameDate && games.length) {
+    try {
+      const nextDate = new Date(d.gameDate);
+      const lastDate = new Date(games[0].date);
+      const dayGap = Math.round((nextDate - lastDate) / 86400000);
+      if (dayGap === 1) {
+        chips.push({ label:'B2B RISK', val: 'BACK-TO-BACK', sub: 'consecutive game', cls: 'warn' });
+      }
+    } catch(e) {}
+  }
+
+  // USAGE — USG% from season stats
+  if (sa.usg && sa.usg > 0) {
+    const cls = sa.usg > 28 ? 'hot' : '';
+    chips.push({ label:'USAGE', val: sa.usg.toFixed(1) + '%', sub: 'TS ' + (sa.ts_pct || 0).toFixed(1) + '%', cls });
+  }
+
+  el.innerHTML = chips.map(function(c) {
+    return '<div class="intel-chip' + (c.cls ? ' ' + c.cls : '') + '">'
+      + '<div class="ic2-lbl">' + c.label + '</div>'
+      + '<div class="ic2-val">' + c.val + '</div>'
+      + '<div class="ic2-sub">' + c.sub + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function renderMatchup(d) {
+  const el = $id('matchupContent');
+  const od = d.opponentDef;
+  if (!od || !d.opponent) {
+    el.innerHTML = '<div style="padding:16px;font-family:DM Mono,monospace;font-size:11px;color:var(--muted);">No opponent data available.</div>';
+    return;
+  }
+  const la = {
+    pts: od.leagueAvgPts  || 22,
+    reb: od.leagueAvgReb  || 10,
+    ast: od.leagueAvgAst  || 3.5,
+    tpm: od.leagueAvgThrees || 1.5
+  };
+  const dbar = function(lbl, allowed, avg) {
+    const r = allowed / Math.max(avg, 0.1);
+    const w = Math.min(r * 55, 100);
+    const dc = r > 1.06 ? 'easy' : r < 0.94 ? 'hard' : 'mid';
+    const diff = ((r-1)*100).toFixed(0);
+    const sign = r > 1 ? '+' : '';
+    const note = Math.abs((r-1)*100) < 3 ? 'near avg' : sign+diff+'% vs avg';
+    return '<div class="dbar-row">'
+      + '<div class="dbar-lbl">'+lbl+'</div>'
+      + '<div class="dbar-track"><div class="dbar-fill df-'+dc+'" style="width:'+w.toFixed(0)+'%"></div></div>'
+      + '<div class="dbar-val">'+note+'</div></div>';
+  };
+  const defCard = function(lbl, val, avg) {
+    const r = val / Math.max(avg, 0.1);
+    const nc = r > 1.06 ? 'dnote-bad' : r < 0.94 ? 'dnote-good' : 'dnote-mid';
+    const note = r > 1.06 ? '▲ Exploitable' : r < 0.94 ? '▼ Tough matchup' : '≈ Average';
+    return '<div class="def-card"><div class="def-lbl">'+lbl+'</div>'
+      + '<div class="def-val">'+fmt(val)+'</div>'
+      + '<div class="def-note '+nc+'">'+note+'</div></div>';
+  };
+
+  // VS opponent history
+  const vsGames = (d.games||[]).filter(function(g){ return g.opp === d.opponent; });
+  let vsHtml = '';
+  if (vsGames.length) {
+    vsHtml = '<div class="sec-lbl" style="margin-top:16px;">VS ' + d.opponent + ' THIS SEASON</div>'
+      + '<div class="log-scroll"><table class="log-tbl" style="min-width:auto;"><thead>'
+      + '<tr><th style="text-align:left">DATE</th><th>PTS</th><th>3PM</th><th>REB</th><th>AST</th></tr>'
+      + '</thead><tbody>';
+    vsGames.forEach(function(g){
+      vsHtml += '<tr><td>' + (g.date?g.date.slice(5):'—') + '</td>'
+        + '<td>' + (g.pts??'—') + '</td><td>' + (g['3pm']??'—') + '</td>'
+        + '<td>' + (g.reb??'—') + '</td><td>' + (g.ast??'—') + '</td></tr>';
+    });
+    vsHtml += '</tbody></table></div>';
+  }
+
+  el.innerHTML = '<div class="sec-lbl">DEFENSE ALLOWED TO ' + (d.position||'PLAYER') + ' POSITION</div>'
+    + '<div class="def-grid">'
+    + defCard('PTS ALLOWED', od.ptsAllowed||0, la.pts)
+    + defCard('3PM ALLOWED', od.threesAllowed||0, la.tpm)
+    + defCard('REB ALLOWED', od.rebAllowed||0, la.reb)
+    + defCard('AST ALLOWED', od.astAllowed||0, la.ast)
+    + '</div>'
+    + '<div class="sec-lbl">VS LEAGUE AVERAGE</div>'
+    + dbar('PTS', od.ptsAllowed||0, la.pts)
+    + dbar('3PM', od.threesAllowed||0, la.tpm)
+    + dbar('REB', od.rebAllowed||0, la.reb)
+    + dbar('AST', od.astAllowed||0, la.ast)
+    + '<div class="sec-lbl" style="margin-top:16px;">CONTEXT</div>'
+    + '<div class="info-row">'
+    + '<div class="info-card"><div class="ic-lbl">DEF RATING</div><div class="ic-val">' + (od.defRating||'—') + '</div></div>'
+    + '<div class="info-card"><div class="ic-lbl">PACE</div><div class="ic-val">' + (od.pace||'—') + '</div></div>'
+    + '<div class="info-card"><div class="ic-lbl">VENUE</div><div class="ic-val">' + (d.isHome?'HOME':'AWAY') + '</div></div>'
+    + '</div>'
+    + vsHtml;
+}
+
+// ── TABS ───────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.t === name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(function(p) {
+    p.classList.toggle('active', p.id === 'tp-' + name);
+  });
+}
+
+// ── UTILS ──────────────────────────────────────────────────────────────────
+function fmt(v) {
+  if (v === null || v === undefined || v === '' || isNaN(v)) return '—';
+  return Number(v).toFixed(1);
+}
+function pct(v, max) { return max ? Math.min((v/max)*100, 100).toFixed(1) : 0; }
+function avg(arr) {
+  const a = arr.filter(function(v){ return v !== null && v !== undefined && !isNaN(v); });
+  return a.length ? a.reduce(function(s,v){ return s+Number(v); }, 0) / a.length : 0;
+}
+function gv(g, k) {
+  // Handles '3pm' alias
+  if (k === '3pm') return g['3pm'] ?? g['fg3m'] ?? g['threes'] ?? 0;
+  return g[k] ?? 0;
+}
+function cls(p) {
+  if (p >= 0.70) return 'so';
+  if (p >= 0.55) return 'lo';
+  if (p <= 0.30) return 'su';
+  if (p <= 0.45) return 'lu';
+  return 'n';
+}
+function getVerdict(p) { return cls(p); }
+function initials(name) {
+  return (name||'').split(' ').map(function(w){ return w[0]||''; }).join('').slice(0,2).toUpperCase() || '?';
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
