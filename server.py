@@ -345,6 +345,69 @@ def player_stats():
         return jsonify({"error": str(e), "detail": traceback.format_exc()}), 500
 
 
+@app.route("/api/teams")
+def team_rankings():
+    """Return all 30 teams ranked by NET_RATING with offense, defense & pace metrics."""
+    try:
+        time.sleep(0.3)
+        df_base = LeagueDashTeamStats(
+            season=SEASON,
+            per_mode_detailed="PerGame",
+            measure_type_detailed_defense="Base",
+            season_type_all_star=SEASON_TYPE,
+            timeout=25,
+        ).league_dash_team_stats.get_data_frame()
+
+        time.sleep(0.4)
+        df_opp = LeagueDashTeamStats(
+            season=SEASON,
+            per_mode_detailed="PerGame",
+            measure_type_detailed_defense="Opponent",
+            season_type_all_star=SEASON_TYPE,
+            timeout=25,
+        ).league_dash_team_stats.get_data_frame()
+
+        time.sleep(0.4)
+        df_adv = LeagueDashTeamStats(
+            season=SEASON,
+            per_mode_detailed="PerGame",
+            measure_type_detailed_defense="Advanced",
+            season_type_all_star=SEASON_TYPE,
+            timeout=25,
+        ).league_dash_team_stats.get_data_frame()
+
+        merged = df_base.merge(
+            df_opp[["TEAM_ID", "OPP_PTS", "OPP_REB", "OPP_FG3M"]], on="TEAM_ID"
+        ).merge(
+            df_adv[["TEAM_ID", "OFF_RATING", "DEF_RATING", "NET_RATING", "PACE"]], on="TEAM_ID"
+        )
+        merged = merged.sort_values("NET_RATING", ascending=False).reset_index(drop=True)
+
+        teams = []
+        for _, r in merged.iterrows():
+            teams.append({
+                "team":    str(r["TEAM_NAME"]),
+                "w":       safe_int(r["W"]),
+                "l":       safe_int(r["L"]),
+                "pts":     safe_float(r["PTS"]),
+                "oppPts":  safe_float(r["OPP_PTS"]),
+                "reb":     safe_float(r["REB"]),
+                "ast":     safe_float(r["AST"]),
+                "fg3m":    safe_float(r["FG3M"]),
+                "fg3a":    safe_float(r["FG3A"]),
+                "oppFg3m": safe_float(r["OPP_FG3M"]),
+                "offRtg":  safe_float(r["OFF_RATING"]),
+                "defRtg":  safe_float(r["DEF_RATING"]),
+                "netRtg":  safe_float(r["NET_RATING"]),
+                "pace":    safe_float(r["PACE"]),
+            })
+
+        return jsonify({"teams": teams, "season": SEASON})
+
+    except Exception as e:
+        return jsonify({"error": str(e), "detail": traceback.format_exc()}), 500
+
+
 if __name__ == "__main__":
     print("NBA Props Lab API  →  http://localhost:5000")
     app.run(host="0.0.0.0", port=5000, debug=False)

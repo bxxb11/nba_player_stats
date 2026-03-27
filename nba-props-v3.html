@@ -196,6 +196,31 @@ header{
 .ic2-val{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;line-height:1.2;color:var(--text);}
 .ic2-sub{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);margin-top:2px;}
 
+/* TEAMS */
+.teams-wrap{padding-bottom:24px;}
+.pace-card{background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.15);border-radius:8px;padding:12px 14px;margin-bottom:16px;}
+.pace-card-title{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:3px;color:var(--cyan);margin-bottom:6px;}
+.pace-card-body{font-family:'DM Mono',monospace;font-size:10px;color:var(--text);line-height:1.7;}
+.pace-card-body b{color:var(--cyan);}
+.teams-tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.teams-tbl{width:100%;border-collapse:collapse;min-width:680px;}
+.teams-tbl th{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--muted);text-align:right;padding:6px 6px;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s;}
+.teams-tbl th:hover{color:var(--text);}
+.teams-tbl th.sort-active{color:var(--cyan);}
+.teams-tbl th:first-child,.teams-tbl th:nth-child(2){text-align:center;}
+.teams-tbl th:nth-child(3){text-align:left;}
+.teams-tbl td{font-family:'DM Mono',monospace;font-size:10px;padding:6px 6px;text-align:right;border-bottom:1px solid rgba(26,34,51,.4);}
+.teams-tbl td:first-child{text-align:center;color:var(--muted);font-size:9px;}
+.teams-tbl td:nth-child(2){text-align:center;}
+.teams-tbl td:nth-child(3){text-align:left;color:var(--text);font-size:10px;}
+.teams-tbl tr:hover td{background:rgba(255,255,255,.02);}
+.tgrp{font-family:'DM Mono',monospace;font-size:7px;letter-spacing:2px;color:var(--muted2);text-align:center;padding:3px 6px;background:var(--bg2);border-bottom:1px solid var(--border);}
+.t-fast{color:var(--cyan);}
+.t-slow{color:var(--orange);}
+.t-green{color:var(--green);}
+.t-red{color:var(--red);}
+.t-muted{color:var(--muted);}
+
 /* ERROR */
 .error-box{background:rgba(255,23,68,.06);border:1px solid rgba(255,23,68,.2);border-radius:8px;padding:16px;margin:20px 16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--red);line-height:1.7;}
 .error-box b{font-weight:500;}
@@ -265,6 +290,7 @@ header{
         <div class="tab" data-t="props">PROPS</div>
         <div class="tab" data-t="log">LOG</div>
         <div class="tab" data-t="matchup">MATCHUP</div>
+        <div class="tab" data-t="teams">TEAMS</div>
       </div>
 
       <div class="tab-panel active" id="tp-overview">
@@ -286,6 +312,12 @@ header{
 
       <div class="tab-panel" id="tp-matchup">
         <div id="matchupContent"></div>
+      </div>
+
+      <div class="tab-panel" id="tp-teams">
+        <div id="teamsContent">
+          <div class="loading-msg" style="padding:24px 0;text-align:center;">Click to load team rankings</div>
+        </div>
       </div>
 
     </div>
@@ -319,6 +351,7 @@ const PROP_TYPES = [
 // ── STATE ──────────────────────────────────────────────────────────────────
 let currentPlayer = null;
 const propLines = {};
+let teamsCache = null;
 
 // ── DOM REFS ───────────────────────────────────────────────────────────────
 function $id(id) { return document.getElementById(id); }
@@ -904,6 +937,146 @@ function switchTab(name) {
   });
   document.querySelectorAll('.tab-panel').forEach(function(p) {
     p.classList.toggle('active', p.id === 'tp-' + name);
+  });
+  if (name === 'teams' && !teamsCache) {
+    loadTeams();
+  }
+}
+
+// ── TEAMS ──────────────────────────────────────────────────────────────────
+async function loadTeams() {
+  $id('teamsContent').innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:40px 16px;">'
+    + '<div class="dots"><span></span><span></span><span></span></div>'
+    + '<div class="loading-msg">Fetching all 30 teams from stats.nba.com…<br>This takes ~15 seconds.</div></div>';
+  try {
+    const r = await fetch(API_BASE + '/api/teams', { signal: AbortSignal.timeout(60000) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    teamsCache = data;
+    renderTeams(data, 'netRtg', false);
+  } catch(e) {
+    $id('teamsContent').innerHTML = '<div class="error-box"><b>Failed to load team rankings</b><br><br>' + escHtml(e.message) + '</div>';
+  }
+}
+
+let teamsSortKey = 'netRtg';
+let teamsSortAsc = false;
+
+function renderTeams(data, sortKey, sortAsc) {
+  teamsSortKey = sortKey;
+  teamsSortAsc = sortAsc;
+  const teams = (data.teams || []).slice();
+
+  teams.sort(function(a, b) {
+    var av = a[sortKey], bv = b[sortKey];
+    // For defRtg lower is better — but we still sort by the raw value; header arrow signals direction
+    if (typeof av === 'number' && typeof bv === 'number') {
+      return sortAsc ? av - bv : bv - av;
+    }
+    return String(av).localeCompare(String(bv)) * (sortAsc ? 1 : -1);
+  });
+
+  // Rank each team by netRtg for color coding (use original sorted-by-netRtg index)
+  const byNet = (data.teams || []).slice().sort(function(a,b){ return b.netRtg - a.netRtg; });
+  const netRank = {};
+  byNet.forEach(function(t, i){ netRank[t.team] = i + 1; });
+
+  const offRanks = (data.teams||[]).slice().sort(function(a,b){ return b.offRtg - a.offRtg; });
+  const offRank = {}; offRanks.forEach(function(t,i){ offRank[t.team] = i+1; });
+
+  const defRanks = (data.teams||[]).slice().sort(function(a,b){ return a.defRtg - b.defRtg; }); // lower = better
+  const defRank = {}; defRanks.forEach(function(t,i){ defRank[t.team] = i+1; });
+
+  const ptsRanks = (data.teams||[]).slice().sort(function(a,b){ return b.pts - a.pts; });
+  const ptsRank = {}; ptsRanks.forEach(function(t,i){ ptsRank[t.team] = i+1; });
+
+  const oppRanks = (data.teams||[]).slice().sort(function(a,b){ return a.oppPts - b.oppPts; }); // lower = better
+  const oppRank = {}; oppRanks.forEach(function(t,i){ oppRank[t.team] = i+1; });
+
+  function rankColor(rank, inverted) {
+    var r = inverted ? (31 - rank) : rank;
+    if (r <= 8)  return 't-green';
+    if (r >= 23) return 't-red';
+    return '';
+  }
+
+  function paceColor(pace) {
+    if (pace > 100) return 't-fast';
+    if (pace < 97)  return 't-slow';
+    return '';
+  }
+
+  function netColor(v) {
+    return v > 0 ? 't-green' : v < 0 ? 't-red' : '';
+  }
+
+  function th(label, key, title) {
+    var active = sortKey === key ? ' sort-active' : '';
+    var arrow = sortKey === key ? (sortAsc ? ' ▲' : ' ▼') : '';
+    return '<th class="' + active + '" data-k="' + key + '" title="' + (title||'') + '">' + label + arrow + '</th>';
+  }
+
+  var html = '<div class="teams-wrap">'
+    + '<div class="pace-card">'
+    + '<div class="pace-card-title">WHY PACE MATTERS FOR PROPS</div>'
+    + '<div class="pace-card-body">'
+    + 'Pace = possessions per 48 min. <b>High pace (&gt;100)</b> = more possessions = more chances for stats to accumulate.<br>'
+    + 'Betting an over? Target <b class="t-fast">fast-paced teams</b>. <b class="t-slow">Slow teams (&lt;97)</b> suppress all counting stats.'
+    + '</div></div>'
+    + '<div class="sec-lbl">LEAGUE RANKINGS — ' + (data.season || '') + '</div>'
+    + '<div class="teams-tbl-wrap"><table class="teams-tbl"><thead>'
+    + '<tr class="tgrp"><td colspan="3"></td><td colspan="4" style="text-align:center;letter-spacing:2px;font-size:7px;color:var(--muted2);">── RATINGS ──</td><td colspan="5" style="text-align:center;letter-spacing:2px;font-size:7px;color:var(--muted2);">── PER GAME ──</td></tr>'
+    + '<tr>'
+    + th('RK','netRtg','Sort by Net Rating')
+    + '<th style="text-align:center;cursor:default"></th>'
+    + th('TEAM','team','Sort by team name')
+    + th('OFF','offRtg','Offensive Rating (pts per 100 poss)')
+    + th('DEF','defRtg','Defensive Rating (lower = better)')
+    + th('NET','netRtg','Net Rating (OFF − DEF)')
+    + th('PACE','pace','Possessions per 48 min')
+    + th('PTS','pts','Points scored per game')
+    + th('OPP','oppPts','Points allowed per game')
+    + th('3PM','fg3m','3-pointers made per game')
+    + th('3PA','fg3a','3-point attempts per game')
+    + th('AST','ast','Assists per game')
+    + '</tr></thead><tbody>';
+
+  teams.forEach(function(t, i) {
+    var rk = netRank[t.team] || (i+1);
+    var netStr = (t.netRtg > 0 ? '+' : '') + t.netRtg.toFixed(1);
+    html += '<tr>'
+      + '<td>' + rk + '</td>'
+      + '<td style="text-align:center;font-size:8px;color:var(--muted)">' + (t.w) + '-' + (t.l) + '</td>'
+      + '<td>' + escHtml(t.team) + '</td>'
+      + '<td class="' + rankColor(offRank[t.team], false) + '">' + t.offRtg.toFixed(1) + '</td>'
+      + '<td class="' + rankColor(defRank[t.team], true) + '">' + t.defRtg.toFixed(1) + '</td>'
+      + '<td class="' + netColor(t.netRtg) + '">' + netStr + '</td>'
+      + '<td class="' + paceColor(t.pace) + '">' + t.pace.toFixed(1) + '</td>'
+      + '<td class="' + rankColor(ptsRank[t.team], false) + '">' + t.pts.toFixed(1) + '</td>'
+      + '<td class="' + rankColor(oppRank[t.team], true) + '">' + t.oppPts.toFixed(1) + '</td>'
+      + '<td>' + t.fg3m.toFixed(1) + '</td>'
+      + '<td>' + t.fg3a.toFixed(1) + '</td>'
+      + '<td>' + t.ast.toFixed(1) + '</td>'
+      + '</tr>';
+  });
+
+  html += '</tbody></table></div>'
+    + '<div style="font-family:DM Mono,monospace;font-size:8px;color:var(--muted);padding:10px 2px;line-height:1.8;">'
+    + '<span class="t-green">■</span> Top 8 &nbsp;'
+    + '<span class="t-red">■</span> Bottom 8 &nbsp;'
+    + '<span class="t-fast">■</span> Fast pace (&gt;100) &nbsp;'
+    + '<span class="t-slow">■</span> Slow pace (&lt;97)'
+    + '</div></div>';
+
+  $id('teamsContent').innerHTML = html;
+
+  // Attach sort listeners
+  $id('teamsContent').querySelectorAll('.teams-tbl th[data-k]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var k = el.dataset.k;
+      var asc = (teamsSortKey === k) ? !teamsSortAsc : false;
+      renderTeams(teamsCache, k, asc);
+    });
   });
 }
 
