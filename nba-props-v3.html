@@ -351,11 +351,15 @@ header{
 
 /* ── AUTOCOMPLETE ── */
 .ac-wrap{position:relative;width:100%;}
-/* chevron caret — sits inside the input on the right */
-.ac-wrap::after{content:'▾';position:absolute;right:11px;top:50%;transform:translateY(-50%);
-  color:var(--muted);pointer-events:none;font-size:13px;z-index:1;}
-/* push input text away from caret */
-.ac-wrap input{padding-right:28px !important;}
+/* push input text away from the caret button */
+.ac-wrap input{padding-right:32px !important;}
+/* real clickable caret button — replaces the old ::after pseudo-element */
+.ac-caret{position:absolute;right:0;top:0;bottom:0;width:32px;
+  background:none;border:none;color:var(--muted);cursor:pointer;
+  font-size:13px;display:flex;align-items:center;justify-content:center;
+  border-radius:0 8px 8px 0;transition:color .15s,transform .15s;z-index:2;}
+.ac-caret:hover{color:var(--cyan);}
+.ac-caret.open{transform:rotate(180deg);color:var(--cyan);}
 .ac-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:500;
   background:var(--bg2);border:1px solid var(--border2);border-radius:8px;
   max-height:300px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.55);}
@@ -391,6 +395,7 @@ header{
       <div class="search-sub">NBA PLAYER ANALYSIS · 2025–26</div>
       <div class="ac-wrap">
         <input class="search-field" id="searchField" type="text" placeholder="Player name (e.g. Wembanyama)" autocomplete="off">
+        <button class="ac-caret" id="searchAcCaret" tabindex="-1" aria-label="Open player list">▾</button>
         <div class="ac-dropdown" id="searchAcDrop" style="display:none"></div>
       </div>
       <button class="search-go" id="searchBtn">ANALYZE PLAYER</button>
@@ -484,6 +489,7 @@ header{
           <div class="pleg-search-row">
             <div class="ac-wrap" style="flex:1">
               <input class="pleg-search-inp" id="plegSearchInp" type="text" placeholder="Search player name..." autocomplete="off">
+              <button class="ac-caret" id="plegAcCaret" tabindex="-1" aria-label="Open player list">▾</button>
               <div class="ac-dropdown" id="plegAcDrop" style="display:none"></div>
             </div>
             <button class="pleg-add-btn" id="plegAddBtn">ADD</button>
@@ -1994,11 +2000,19 @@ function renderAcDrop(dropEl, names, query, onSelect, showFooter) {
 
 function bindAutocomplete(inputEl, dropEl, onSelect) {
   var activeIdx = -1;
+  // Find the sibling caret button (if present) for toggle + rotation
+  var caretEl = inputEl.parentElement ? inputEl.parentElement.querySelector('.ac-caret') : null;
+
+  function setCaretOpen(isOpen) {
+    if (!caretEl) return;
+    caretEl.classList.toggle('open', isOpen);
+  }
 
   function close() {
     dropEl.style.display = 'none';
     dropEl.innerHTML = '';
     activeIdx = -1;
+    setCaretOpen(false);
   }
 
   function moveActive(dir) {
@@ -2014,17 +2028,32 @@ function bindAutocomplete(inputEl, dropEl, onSelect) {
     var q = inputEl.value;
     var cb = function(name) { onSelect(name); close(); };
     if (q.trim()) {
-      // filter mode — show up to 8 highlighted matches
       renderAcDrop(dropEl, filterNames(q, 8), q, cb, false);
     } else {
-      // browse mode — show first 20 alphabetically with footer hint
       var browse = (playerNamesListSorted || []).slice(0, 20);
       renderAcDrop(dropEl, browse, '', cb, true);
     }
+    setCaretOpen(dropEl.style.display !== 'none');
     activeIdx = -1;
   }
 
-  // Open on focus — kick off list fetch if not ready yet
+  // Caret click — toggle open/close
+  if (caretEl) {
+    caretEl.addEventListener('mousedown', function(e) {
+      e.preventDefault();  // prevent input blur
+      if (dropEl.style.display !== 'none') {
+        close();
+      } else {
+        inputEl.focus();
+        fetchPlayerNames().then(function() {
+          if (!playerNamesList || !playerNamesList.length) return;
+          refresh();
+        });
+      }
+    });
+  }
+
+  // Open on focus
   inputEl.addEventListener('focus', function() {
     fetchPlayerNames().then(function() {
       if (!playerNamesList || !playerNamesList.length) return;
@@ -2061,14 +2090,13 @@ function bindAutocomplete(inputEl, dropEl, onSelect) {
           return;
         }
       }
-      // fall through to normal Enter handler
     } else if (e.key === 'Escape') {
       close();
     }
-  }, true);  // capture so we intercept before existing keydown handlers
+  }, true);
 
   inputEl.addEventListener('blur', function() {
-    setTimeout(close, 150);  // allow mousedown to fire first
+    setTimeout(close, 150);
   });
 }
 
