@@ -349,6 +349,17 @@ header{
 .prec-hr-fill{height:100%;border-radius:2px;}
 .prec-no-combos{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted2);padding:8px 0;}
 
+/* ── AUTOCOMPLETE ── */
+.ac-wrap{position:relative;width:100%;}
+.ac-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:500;
+  background:var(--bg2);border:1px solid var(--border2);border-radius:8px;
+  max-height:240px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.55);}
+.ac-item{padding:9px 14px;font-family:'DM Mono',monospace;font-size:11px;
+  color:var(--text);cursor:pointer;display:flex;align-items:center;gap:8px;}
+.ac-item:hover,.ac-item.ac-active{background:rgba(0,229,255,.08);color:var(--cyan);}
+.ac-item b{color:var(--cyan);font-weight:400;}
+.ac-empty{padding:10px 14px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted2);}
+
 </style>
 </head>
 <body>
@@ -371,7 +382,10 @@ header{
     <div class="search-wrap">
       <div class="search-hero">PROPS LAB</div>
       <div class="search-sub">NBA PLAYER ANALYSIS · 2025–26</div>
-      <input class="search-field" id="searchField" type="text" placeholder="Player name (e.g. Wembanyama)" autocomplete="off">
+      <div class="ac-wrap">
+        <input class="search-field" id="searchField" type="text" placeholder="Player name (e.g. Wembanyama)" autocomplete="off">
+        <div class="ac-dropdown" id="searchAcDrop" style="display:none"></div>
+      </div>
       <button class="search-go" id="searchBtn">ANALYZE PLAYER</button>
       <button class="parlay-lab-btn" id="parlayLabBtn">⚡ PARLAY LAB</button>
       <div class="section-lbl" id="recentLabel" style="display:none">RECENT · CACHED</div>
@@ -461,7 +475,10 @@ header{
         <div class="parlay-builder">
           <div class="sec-lbl">BUILD YOUR PARLAY</div>
           <div class="pleg-search-row">
-            <input class="pleg-search-inp" id="plegSearchInp" type="text" placeholder="Search player name..." autocomplete="off">
+            <div class="ac-wrap" style="flex:1">
+              <input class="pleg-search-inp" id="plegSearchInp" type="text" placeholder="Search player name..." autocomplete="off">
+              <div class="ac-dropdown" id="plegAcDrop" style="display:none"></div>
+            </div>
             <button class="pleg-add-btn" id="plegAddBtn">ADD</button>
           </div>
           <div class="pleg-loading" id="plegLoading" style="display:none">Fetching player data...</div>
@@ -1889,6 +1906,130 @@ async function addRecommendedLegs(legDefs) {
 // (patched below — append after the existing DOMContentLoaded block)
 document.addEventListener('DOMContentLoaded', function() {
   initParlay();
+});
+
+// ── AUTOCOMPLETE ──────────────────────────────────────────────────────────────
+
+var playerNamesList = null;  // null = not yet fetched; [] = fetch attempted
+
+async function fetchPlayerNames() {
+  if (playerNamesList !== null) return;
+  playerNamesList = [];  // lock against duplicate concurrent fetches
+  try {
+    var r = await fetch(API_BASE + '/api/players-list', { signal: AbortSignal.timeout(5000) });
+    if (r.ok) playerNamesList = (await r.json()).map(function(p) { return p.name; });
+  } catch(e) { playerNamesList = []; }
+}
+
+function filterNames(query) {
+  var q = query.toLowerCase().trim();
+  if (!q || !playerNamesList || !playerNamesList.length) return [];
+  return playerNamesList.filter(function(n) { return n.toLowerCase().includes(q); }).slice(0, 8);
+}
+
+function highlightMatch(name, query) {
+  var q = query.toLowerCase().trim();
+  if (!q) return escHtml(name);
+  var idx = name.toLowerCase().indexOf(q);
+  if (idx < 0) return escHtml(name);
+  return escHtml(name.slice(0, idx)) + '<b>' + escHtml(name.slice(idx, idx + q.length)) + '</b>' + escHtml(name.slice(idx + q.length));
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderAcDrop(dropEl, matches, query, onSelect) {
+  if (!matches.length) {
+    dropEl.innerHTML = '<div class="ac-empty">No matches</div>';
+    dropEl.style.display = 'block';
+    return;
+  }
+  dropEl.innerHTML = matches.map(function(name, i) {
+    return '<div class="ac-item" data-idx="'+i+'" data-name="'+escHtml(name)+'">'+highlightMatch(name, query)+'</div>';
+  }).join('');
+  dropEl.style.display = 'block';
+  dropEl.querySelectorAll('.ac-item').forEach(function(item) {
+    item.addEventListener('mousedown', function(e) {
+      e.preventDefault();  // prevent blur before click fires
+      onSelect(item.dataset.name);
+    });
+  });
+}
+
+function bindAutocomplete(inputEl, dropEl, onSelect) {
+  var activeIdx = -1;
+
+  function close() {
+    dropEl.style.display = 'none';
+    dropEl.innerHTML = '';
+    activeIdx = -1;
+  }
+
+  function moveActive(dir) {
+    var items = dropEl.querySelectorAll('.ac-item');
+    if (!items.length) return;
+    items.forEach(function(el) { el.classList.remove('ac-active'); });
+    activeIdx = (activeIdx + dir + items.length) % items.length;
+    items[activeIdx].classList.add('ac-active');
+  }
+
+  inputEl.addEventListener('input', function() {
+    fetchPlayerNames().then(function() {
+      var q = inputEl.value;
+      var matches = filterNames(q);
+      if (!q.trim()) { close(); return; }
+      renderAcDrop(dropEl, matches, q, function(name) {
+        onSelect(name);
+        close();
+      });
+      activeIdx = -1;
+    });
+  });
+
+  inputEl.addEventListener('keydown', function(e) {
+    var isOpen = dropEl.style.display !== 'none';
+    if (e.key === 'ArrowDown') {
+      if (!isOpen) return;
+      e.preventDefault();
+      moveActive(1);
+    } else if (e.key === 'ArrowUp') {
+      if (!isOpen) return;
+      e.preventDefault();
+      moveActive(-1);
+    } else if (e.key === 'Enter') {
+      if (isOpen && activeIdx >= 0) {
+        var items = dropEl.querySelectorAll('.ac-item');
+        if (items[activeIdx]) {
+          e.stopImmediatePropagation();
+          onSelect(items[activeIdx].dataset.name);
+          close();
+          return;
+        }
+      }
+      // fall through to normal Enter handling if no item selected
+    } else if (e.key === 'Escape') {
+      close();
+    }
+  }, true);  // capture phase so we can intercept before the existing keydown handlers
+
+  inputEl.addEventListener('blur', function() {
+    setTimeout(close, 150);  // delay allows mousedown click to fire first
+  });
+}
+
+// Wire autocomplete to main search field
+document.addEventListener('DOMContentLoaded', function() {
+  bindAutocomplete($id('searchField'), $id('searchAcDrop'), function(name) {
+    $id('searchField').value = name;
+    loadPlayer(name);
+  });
+
+  // Wire autocomplete to parlay builder search
+  bindAutocomplete($id('plegSearchInp'), $id('plegAcDrop'), function(name) {
+    $id('plegSearchInp').value = '';
+    addParlayPlayer(name);
+  });
 });
 </script>
 </body>

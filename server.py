@@ -380,6 +380,13 @@ def health():
     return jsonify({"status": "ok"})
 
 
+@app.route("/api/players-list")
+def players_list():
+    """Return all active players as [{name}]. Uses local static data — instant, no API call."""
+    active = nba_players.get_active_players()
+    return jsonify([{"name": p["full_name"]} for p in active])
+
+
 @app.route("/api/player")
 def player_stats():
     name = request.args.get("name", "").strip()
