@@ -1916,9 +1916,21 @@ async function fetchPlayerNames() {
   if (playerNamesList !== null) return;
   playerNamesList = [];  // lock against duplicate concurrent fetches
   try {
-    var r = await fetch(API_BASE + '/api/players-list', { signal: AbortSignal.timeout(5000) });
-    if (r.ok) playerNamesList = (await r.json()).map(function(p) { return p.name; });
-  } catch(e) { playerNamesList = []; }
+    // Use manual AbortController + setTimeout for broad browser compat
+    // (AbortSignal.timeout() is not available in all environments)
+    var ctrl = new AbortController();
+    var tid  = setTimeout(function() { ctrl.abort(); }, 5000);
+    var r = await fetch(API_BASE + '/api/players-list', { signal: ctrl.signal });
+    clearTimeout(tid);
+    if (r.ok) {
+      playerNamesList = (await r.json()).map(function(p) { return p.name; });
+    } else {
+      playerNamesList = null;  // allow retry on next keystroke
+    }
+  } catch(e) {
+    console.warn('[autocomplete] players-list fetch failed:', e);
+    playerNamesList = null;  // allow retry on next keystroke
+  }
 }
 
 function filterNames(query) {
@@ -1941,8 +1953,13 @@ function escHtml(s) {
 
 function renderAcDrop(dropEl, matches, query, onSelect) {
   if (!matches.length) {
-    dropEl.innerHTML = '<div class="ac-empty">No matches</div>';
-    dropEl.style.display = 'block';
+    // Only show "No matches" when the list is loaded; if null = still fetching, stay silent
+    if (playerNamesList !== null && playerNamesList.length > 0) {
+      dropEl.innerHTML = '<div class="ac-empty">No matches</div>';
+      dropEl.style.display = 'block';
+    } else {
+      dropEl.style.display = 'none';
+    }
     return;
   }
   dropEl.innerHTML = matches.map(function(name, i) {
