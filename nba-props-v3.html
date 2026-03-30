@@ -351,14 +351,21 @@ header{
 
 /* ── AUTOCOMPLETE ── */
 .ac-wrap{position:relative;width:100%;}
+/* chevron caret — sits inside the input on the right */
+.ac-wrap::after{content:'▾';position:absolute;right:11px;top:50%;transform:translateY(-50%);
+  color:var(--muted);pointer-events:none;font-size:13px;z-index:1;}
+/* push input text away from caret */
+.ac-wrap input{padding-right:28px !important;}
 .ac-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:500;
   background:var(--bg2);border:1px solid var(--border2);border-radius:8px;
-  max-height:240px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.55);}
+  max-height:300px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.55);}
 .ac-item{padding:9px 14px;font-family:'DM Mono',monospace;font-size:11px;
   color:var(--text);cursor:pointer;display:flex;align-items:center;gap:8px;}
 .ac-item:hover,.ac-item.ac-active{background:rgba(0,229,255,.08);color:var(--cyan);}
 .ac-item b{color:var(--cyan);font-weight:400;}
-.ac-empty{padding:10px 14px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted2);}
+.ac-empty{padding:8px 14px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted2);}
+.ac-footer{padding:7px 14px;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted2);
+  border-top:1px solid var(--border);letter-spacing:.5px;}
 
 </style>
 </head>
@@ -1908,35 +1915,38 @@ document.addEventListener('DOMContentLoaded', function() {
   initParlay();
 });
 
-// ── AUTOCOMPLETE ──────────────────────────────────────────────────────────────
+// ── AUTOCOMPLETE / COMBOBOX ───────────────────────────────────────────────────
 
-var playerNamesList = null;  // null = not yet fetched; [] = fetch attempted
+var playerNamesList    = null;   // null = not yet fetched
+var playerNamesListSorted = null; // alphabetically sorted cache for browse mode
 
 async function fetchPlayerNames() {
   if (playerNamesList !== null) return;
   playerNamesList = [];  // lock against duplicate concurrent fetches
   try {
-    // Use manual AbortController + setTimeout for broad browser compat
-    // (AbortSignal.timeout() is not available in all environments)
     var ctrl = new AbortController();
     var tid  = setTimeout(function() { ctrl.abort(); }, 5000);
     var r = await fetch(API_BASE + '/api/players-list', { signal: ctrl.signal });
     clearTimeout(tid);
     if (r.ok) {
       playerNamesList = (await r.json()).map(function(p) { return p.name; });
+      playerNamesListSorted = playerNamesList.slice().sort();
     } else {
-      playerNamesList = null;  // allow retry on next keystroke
+      playerNamesList = null;  // allow retry
     }
   } catch(e) {
     console.warn('[autocomplete] players-list fetch failed:', e);
-    playerNamesList = null;  // allow retry on next keystroke
+    playerNamesList = null;  // allow retry
   }
 }
 
-function filterNames(query) {
+function filterNames(query, limit) {
   var q = query.toLowerCase().trim();
-  if (!q || !playerNamesList || !playerNamesList.length) return [];
-  return playerNamesList.filter(function(n) { return n.toLowerCase().includes(q); }).slice(0, 8);
+  if (!playerNamesList || !playerNamesList.length) return [];
+  if (!q) return [];
+  return playerNamesList
+    .filter(function(n) { return n.toLowerCase().includes(q); })
+    .slice(0, limit || 8);
 }
 
 function highlightMatch(name, query) {
@@ -1944,31 +1954,39 @@ function highlightMatch(name, query) {
   if (!q) return escHtml(name);
   var idx = name.toLowerCase().indexOf(q);
   if (idx < 0) return escHtml(name);
-  return escHtml(name.slice(0, idx)) + '<b>' + escHtml(name.slice(idx, idx + q.length)) + '</b>' + escHtml(name.slice(idx + q.length));
+  return escHtml(name.slice(0, idx))
+       + '<b>' + escHtml(name.slice(idx, idx + q.length)) + '</b>'
+       + escHtml(name.slice(idx + q.length));
 }
 
 function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-function renderAcDrop(dropEl, matches, query, onSelect) {
-  if (!matches.length) {
-    // Only show "No matches" when the list is loaded; if null = still fetching, stay silent
-    if (playerNamesList !== null && playerNamesList.length > 0) {
-      dropEl.innerHTML = '<div class="ac-empty">No matches</div>';
+// Render dropdown — query may be empty (browse mode) or a filter string
+function renderAcDrop(dropEl, names, query, onSelect, showFooter) {
+  if (!names.length) {
+    if (playerNamesList && playerNamesList.length && query.trim()) {
+      dropEl.innerHTML = '<div class="ac-empty">No matches for "' + escHtml(query) + '"</div>';
       dropEl.style.display = 'block';
     } else {
       dropEl.style.display = 'none';
     }
     return;
   }
-  dropEl.innerHTML = matches.map(function(name, i) {
-    return '<div class="ac-item" data-idx="'+i+'" data-name="'+escHtml(name)+'">'+highlightMatch(name, query)+'</div>';
+  var rows = names.map(function(name, i) {
+    return '<div class="ac-item" data-idx="' + i + '" data-name="' + escHtml(name) + '">'
+         + highlightMatch(name, query)
+         + '</div>';
   }).join('');
+  if (showFooter) {
+    rows += '<div class="ac-footer">▲ ' + playerNamesList.length + ' active players · type to filter</div>';
+  }
+  dropEl.innerHTML = rows;
   dropEl.style.display = 'block';
   dropEl.querySelectorAll('.ac-item').forEach(function(item) {
     item.addEventListener('mousedown', function(e) {
-      e.preventDefault();  // prevent blur before click fires
+      e.preventDefault();  // prevent blur firing before click
       onSelect(item.dataset.name);
     });
   });
@@ -1989,25 +2007,44 @@ function bindAutocomplete(inputEl, dropEl, onSelect) {
     items.forEach(function(el) { el.classList.remove('ac-active'); });
     activeIdx = (activeIdx + dir + items.length) % items.length;
     items[activeIdx].classList.add('ac-active');
+    items[activeIdx].scrollIntoView({ block: 'nearest' });
   }
 
-  inputEl.addEventListener('input', function() {
+  function refresh() {
+    var q = inputEl.value;
+    var cb = function(name) { onSelect(name); close(); };
+    if (q.trim()) {
+      // filter mode — show up to 8 highlighted matches
+      renderAcDrop(dropEl, filterNames(q, 8), q, cb, false);
+    } else {
+      // browse mode — show first 20 alphabetically with footer hint
+      var browse = (playerNamesListSorted || []).slice(0, 20);
+      renderAcDrop(dropEl, browse, '', cb, true);
+    }
+    activeIdx = -1;
+  }
+
+  // Open on focus — kick off list fetch if not ready yet
+  inputEl.addEventListener('focus', function() {
     fetchPlayerNames().then(function() {
-      var q = inputEl.value;
-      var matches = filterNames(q);
-      if (!q.trim()) { close(); return; }
-      renderAcDrop(dropEl, matches, q, function(name) {
-        onSelect(name);
-        close();
-      });
-      activeIdx = -1;
+      if (!playerNamesList || !playerNamesList.length) return;
+      refresh();
     });
   });
 
+  // Filter on every keystroke
+  inputEl.addEventListener('input', function() {
+    fetchPlayerNames().then(function() {
+      if (!playerNamesList || !playerNamesList.length) return;
+      refresh();
+    });
+  });
+
+  // Keyboard navigation
   inputEl.addEventListener('keydown', function(e) {
     var isOpen = dropEl.style.display !== 'none';
     if (e.key === 'ArrowDown') {
-      if (!isOpen) return;
+      if (!isOpen) { fetchPlayerNames().then(refresh); return; }
       e.preventDefault();
       moveActive(1);
     } else if (e.key === 'ArrowUp') {
@@ -2024,14 +2061,14 @@ function bindAutocomplete(inputEl, dropEl, onSelect) {
           return;
         }
       }
-      // fall through to normal Enter handling if no item selected
+      // fall through to normal Enter handler
     } else if (e.key === 'Escape') {
       close();
     }
-  }, true);  // capture phase so we can intercept before the existing keydown handlers
+  }, true);  // capture so we intercept before existing keydown handlers
 
   inputEl.addEventListener('blur', function() {
-    setTimeout(close, 150);  // delay allows mousedown click to fire first
+    setTimeout(close, 150);  // allow mousedown to fire first
   });
 }
 
