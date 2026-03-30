@@ -22,6 +22,53 @@ from nba_api.stats.endpoints import (
 )
 from nba_api.stats.static import players as nba_players, teams as nba_teams
 
+# ── Harden nba_api against ConnectionResetError (10054) ─────────────────────
+# stats.nba.com drops connections from requests that look like bots.
+# Setting browser-like headers and the required NBA-specific tokens prevents this.
+try:
+    from nba_api.stats.library import http as _nba_http
+    _nba_http.STATS_HEADERS = {
+        "Accept":               "application/json, text/plain, */*",
+        "Accept-Encoding":      "gzip, deflate, br",
+        "Accept-Language":      "en-US,en;q=0.9",
+        "Connection":           "keep-alive",
+        "Host":                 "stats.nba.com",
+        "Origin":               "https://www.nba.com",
+        "Referer":              "https://www.nba.com/",
+        "User-Agent":           (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/123.0.0.0 Safari/537.36"
+        ),
+        "x-nba-stats-origin":   "stats",
+        "x-nba-stats-token":    "true",
+    }
+except Exception:
+    pass  # non-fatal; fall back to default headers
+
+
+def nba_call(fn, retries=3, base_delay=2.0):
+    """Call an nba_api endpoint factory function with exponential backoff.
+
+    fn      — zero-argument callable that creates and returns the endpoint object
+    retries — max attempts (default 3)
+    Retries on ConnectionReset / RemoteDisconnected / timeout errors.
+    """
+    _reset_signals = ("10054", "connectionreset", "connection aborted",
+                      "remotedisconnected", "timeout", "timed out")
+    for attempt in range(retries):
+        try:
+            return fn()
+        except Exception as exc:
+            msg = str(exc).lower()
+            is_transient = any(sig in msg for sig in _reset_signals)
+            if is_transient and attempt < retries - 1:
+                wait = base_delay * (2 ** attempt)   # 2 s → 4 s → ...
+                time.sleep(wait)
+            else:
+                raise
+
+
 app = Flask(__name__)
 CORS(app)
 
@@ -283,7 +330,7 @@ def get_next_game(team_abbr: str):
         check = today + datetime.timedelta(days=delta)
         date_str = check.strftime("%m/%d/%Y")
         try:
-            sb = ScoreboardV2(game_date=date_str, timeout=20)
+            sb = nba_call(lambda d=date_str: ScoreboardV2(game_date=d, timeout=20))
             ls = sb.line_score.get_data_frame()
             gh = sb.game_header.get_data_frame()
 
@@ -318,13 +365,13 @@ def get_opp_def_stats(opp_abbr: str):
     """Return per-game opponent (defense-allowed) stats for a team."""
     try:
         # Call 1 — Opponent measure: points/reb/ast/3pm allowed
-        resp_opp = LeagueDashTeamStats(
+        resp_opp = nba_call(lambda: LeagueDashTeamStats(
             season=SEASON,
             per_mode_detailed="PerGame",
             measure_type_detailed_defense="Opponent",
             season_type_all_star=SEASON_TYPE,
             timeout=20,
-        )
+        ))
         df_opp = resp_opp.league_dash_team_stats.get_data_frame()
         # Opponent measure returns TEAM_ID/TEAM_NAME, not TEAM_ABBREVIATION
         team_info = nba_teams.find_team_by_abbreviation(opp_abbr)
@@ -344,13 +391,13 @@ def get_opp_def_stats(opp_abbr: str):
 
         # Call 2 — Advanced measure: DEF_RATING + PACE
         time.sleep(0.4)
-        resp_adv = LeagueDashTeamStats(
+        resp_adv = nba_call(lambda: LeagueDashTeamStats(
             season=SEASON,
             per_mode_detailed="PerGame",
             measure_type_detailed_defense="Advanced",
             season_type_all_star=SEASON_TYPE,
             timeout=20,
-        )
+        ))
         df_adv = resp_adv.league_dash_team_stats.get_data_frame()
         row_adv = df_adv[df_adv["TEAM_ID"] == team_id]
         def_rating = safe_float(row_adv.iloc[0].get("DEF_RATING"), 1) if not row_adv.empty else 0.0
@@ -402,7 +449,7 @@ def player_stats():
         time.sleep(0.6)
 
         # 2 · player meta (team, position, jersey)
-        info_ep = CommonPlayerInfo(player_id=player_id, timeout=20)
+        info_ep = nba_call(lambda: CommonPlayerInfo(player_id=player_id, timeout=20))
         info_df = info_ep.common_player_info.get_data_frame()
         if info_df.empty:
             return jsonify({"error": "Player info unavailable"}), 404
@@ -415,12 +462,12 @@ def player_stats():
         time.sleep(0.6)
 
         # 3 · full-season game log (all games, newest-first)
-        gl_ep = PlayerGameLog(
+        gl_ep = nba_call(lambda: PlayerGameLog(
             player_id=player_id,
             season=SEASON,
             season_type_all_star=SEASON_TYPE,
             timeout=20,
-        )
+        ))
         gl_df = gl_ep.player_game_log.get_data_frame()
 
         # 4 · parse ALL season games (using shared helper)
@@ -448,13 +495,13 @@ def player_stats():
         # 6 · advanced season stats (USG%, TS%, NET_RATING)
         try:
             time.sleep(0.6)
-            adv_ep = LeagueDashPlayerStats(
+            adv_ep = nba_call(lambda: LeagueDashPlayerStats(
                 season=SEASON,
                 season_type_all_star=SEASON_TYPE,
                 measure_type_detailed_defense="Advanced",
                 per_mode_detailed="PerGame",
                 timeout=20,
-            )
+            ))
             adv_df = adv_ep.league_dash_player_stats.get_data_frame()
             adv_row = adv_df[adv_df["PLAYER_ID"] == int(player_id)]
             if not adv_row.empty:
@@ -511,31 +558,31 @@ def team_rankings():
     """Return all 30 teams ranked by NET_RATING with offense, defense & pace metrics."""
     try:
         time.sleep(0.3)
-        df_base = LeagueDashTeamStats(
+        df_base = nba_call(lambda: LeagueDashTeamStats(
             season=SEASON,
             per_mode_detailed="PerGame",
             measure_type_detailed_defense="Base",
             season_type_all_star=SEASON_TYPE,
             timeout=25,
-        ).league_dash_team_stats.get_data_frame()
+        )).league_dash_team_stats.get_data_frame()
 
         time.sleep(0.4)
-        df_opp = LeagueDashTeamStats(
+        df_opp = nba_call(lambda: LeagueDashTeamStats(
             season=SEASON,
             per_mode_detailed="PerGame",
             measure_type_detailed_defense="Opponent",
             season_type_all_star=SEASON_TYPE,
             timeout=25,
-        ).league_dash_team_stats.get_data_frame()
+        )).league_dash_team_stats.get_data_frame()
 
         time.sleep(0.4)
-        df_adv = LeagueDashTeamStats(
+        df_adv = nba_call(lambda: LeagueDashTeamStats(
             season=SEASON,
             per_mode_detailed="PerGame",
             measure_type_detailed_defense="Advanced",
             season_type_all_star=SEASON_TYPE,
             timeout=25,
-        ).league_dash_team_stats.get_data_frame()
+        )).league_dash_team_stats.get_data_frame()
 
         merged = df_base.merge(
             df_opp[["TEAM_ID", "OPP_PTS", "OPP_REB", "OPP_FG3M"]], on="TEAM_ID"
@@ -607,13 +654,13 @@ def matchup_parlays():
     try:
         # ── Step 1: Get all players for both teams via LeagueDashPlayerStats ──
         time.sleep(0.4)
-        base_ep = LeagueDashPlayerStats(
+        base_ep = nba_call(lambda: LeagueDashPlayerStats(
             season=SEASON,
             season_type_all_star=SEASON_TYPE,
             measure_type_detailed_defense="Base",
             per_mode_detailed="PerGame",
             timeout=30,
-        )
+        ))
         all_players_df = base_ep.league_dash_player_stats.get_data_frame()
 
         home_id = int(home_info["id"])
@@ -650,12 +697,12 @@ def matchup_parlays():
                 }
                 try:
                     time.sleep(0.6)
-                    gl_ep = PlayerGameLog(
-                        player_id=pid,
+                    gl_ep = nba_call(lambda p=pid: PlayerGameLog(
+                        player_id=p,
                         season=SEASON,
                         season_type_all_star=SEASON_TYPE,
                         timeout=20,
-                    )
+                    ))
                     gl_df = gl_ep.player_game_log.get_data_frame()
                     games = parse_game_log(gl_df)
                     # Only include players with enough games
