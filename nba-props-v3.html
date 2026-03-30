@@ -225,6 +225,130 @@ header{
 .error-box{background:rgba(255,23,68,.06);border:1px solid rgba(255,23,68,.2);border-radius:8px;padding:16px;margin:20px 16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--red);line-height:1.7;}
 .error-box b{font-weight:500;}
 
+/* ── DESKTOP RESPONSIVE ── */
+@media(min-width:768px){
+  .analysis-wrap{max-width:800px;}
+}
+
+/* ── PARLAY LAB BUTTON (search page) ── */
+.parlay-lab-btn{width:100%;background:transparent;border:1.5px solid var(--cyan);color:var(--cyan);font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:3px;padding:12px;border-radius:8px;cursor:pointer;transition:all .15s;margin-bottom:24px;}
+.parlay-lab-btn:hover{background:rgba(0,229,255,.07);}
+
+/* ── PARLAY PAGE ── */
+.parlay-wrap{max-width:1100px;margin:0 auto;padding:24px 16px 60px;}
+.parlay-hdr{text-align:center;padding:24px 0 20px;}
+.parlay-title{font-family:'Bebas Neue',sans-serif;font-size:40px;letter-spacing:6px;color:var(--cyan);text-shadow:0 0 30px rgba(0,229,255,.2);}
+.parlay-sub{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--muted);margin-top:4px;}
+
+.parlay-grid{display:grid;grid-template-columns:1fr;gap:20px;margin-bottom:32px;}
+@media(min-width:768px){.parlay-grid{grid-template-columns:1fr 1fr;gap:28px;}}
+
+/* builder column */
+.parlay-builder{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px;}
+.pleg-search-row{display:flex;gap:8px;margin-bottom:16px;}
+.pleg-search-inp{flex:1;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text);padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:14px;border-radius:6px;outline:none;transition:border-color .2s;}
+.pleg-search-inp:focus{border-color:var(--cyan);}
+.pleg-search-inp::placeholder{color:var(--muted);}
+.pleg-add-btn{background:var(--cyan);border:none;color:#000;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;padding:10px 16px;border-radius:6px;cursor:pointer;transition:opacity .15s;white-space:nowrap;}
+.pleg-add-btn:hover{opacity:.85;}
+.pleg-add-btn:disabled{opacity:.3;cursor:default;}
+.pleg-loading{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);padding:6px 0;}
+
+.parlay-legs{display:flex;flex-direction:column;gap:10px;min-height:40px;}
+.pleg-empty{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted2);padding:12px 0;text-align:center;}
+
+.pleg-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px;}
+.pleg-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.pleg-player-name{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px;}
+.pleg-team-badge{font-family:'DM Mono',monospace;font-size:8px;color:var(--cyan);background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.15);padding:2px 6px;border-radius:3px;margin-left:6px;}
+.pleg-remove{cursor:pointer;color:var(--muted);font-size:16px;line-height:1;padding:0 4px;transition:color .15s;}
+.pleg-remove:hover{color:var(--red);}
+.pleg-config{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+.pleg-stat-sel{background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:6px 8px;border-radius:5px;outline:none;cursor:pointer;}
+.pleg-stat-sel:focus{border-color:var(--cyan);}
+.pleg-line-inp2{background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:'Bebas Neue',sans-serif;font-size:18px;padding:4px 8px;border-radius:5px;width:70px;outline:none;transition:border-color .15s;}
+.pleg-line-inp2:focus{border-color:var(--cyan);}
+.pleg-avg-hint{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);}
+.pleg-avg-hint b{color:var(--text);}
+.pleg-rate-pills{display:flex;gap:6px;flex-wrap:wrap;}
+.pleg-pill{font-family:'DM Mono',monospace;font-size:9px;padding:3px 7px;border-radius:4px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;gap:4px;}
+.pleg-pill-lbl{color:var(--muted);}
+.pleg-pill-val{font-weight:500;}
+.pp-so{color:var(--green);} .pp-lo{color:rgba(0,230,118,.8);} .pp-n{color:var(--text);}
+.pp-lu{color:rgba(255,23,68,.7);} .pp-su{color:var(--red);}
+
+.parlay-calc-btn{width:100%;background:var(--cyan);border:none;color:#000;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:3px;padding:13px;border-radius:8px;cursor:pointer;transition:opacity .15s;margin-top:14px;}
+.parlay-calc-btn:hover{opacity:.85;}
+.parlay-calc-btn:disabled{opacity:.25;cursor:default;}
+
+/* results column */
+.parlay-results{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px;}
+.parlay-empty-msg{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted2);padding:24px 0;text-align:center;line-height:1.8;}
+.prob-big-row{display:flex;align-items:baseline;gap:12px;margin:14px 0 6px;}
+.prob-big{font-family:'Bebas Neue',sans-serif;font-size:56px;line-height:1;color:var(--cyan);}
+.prob-big-lbl{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px;}
+.corr-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:4px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.5px;margin-bottom:12px;}
+.corr-pos{background:rgba(0,230,118,.1);border:1px solid rgba(0,230,118,.3);color:var(--green);}
+.corr-neg{background:rgba(255,23,68,.1);border:1px solid rgba(255,23,68,.3);color:var(--red);}
+.corr-neu{background:rgba(74,101,128,.1);border:1px solid var(--border);color:var(--muted);}
+.prob-windows{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px;}
+.prob-win-card{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:8px;text-align:center;}
+.prob-win-lbl{font-family:'DM Mono',monospace;font-size:7px;letter-spacing:1px;color:var(--muted);margin-bottom:4px;}
+.prob-win-val{font-family:'Bebas Neue',sans-serif;font-size:20px;line-height:1;}
+.prob-win-type{font-family:'DM Mono',monospace;font-size:7px;color:var(--muted);margin-top:2px;}
+.leg-rates-tbl{width:100%;border-collapse:collapse;margin-bottom:10px;}
+.leg-rates-tbl th{font-family:'DM Mono',monospace;font-size:7px;letter-spacing:1px;color:var(--muted);text-align:right;padding:4px 5px;border-bottom:1px solid var(--border);}
+.leg-rates-tbl th:first-child{text-align:left;}
+.leg-rates-tbl td{font-family:'DM Mono',monospace;font-size:10px;padding:5px 5px;text-align:right;border-bottom:1px solid rgba(26,34,51,.4);}
+.leg-rates-tbl td:first-child{text-align:left;color:var(--text);}
+.parlay-warn{background:rgba(255,171,0,.06);border:1px solid rgba(255,171,0,.2);border-radius:5px;padding:8px 10px;font-family:'DM Mono',monospace;font-size:9px;color:var(--warn);line-height:1.6;margin-top:8px;}
+
+/* ── MATCHUP RECS SECTION ── */
+.parlay-recs-section{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px;}
+.prec-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:20px;}
+.prec-ctrl-group{display:flex;flex-direction:column;gap:5px;}
+.prec-ctrl-lbl{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--muted);}
+.prec-team-sel{background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:8px 10px;border-radius:6px;outline:none;cursor:pointer;min-width:100px;}
+.prec-team-sel:focus{border-color:var(--cyan);}
+.prec-window-tog{display:flex;gap:0;}
+.pw-btn{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--muted);padding:7px 12px;border:1px solid var(--border);cursor:pointer;transition:all .15s;}
+.pw-btn:first-child{border-radius:4px 0 0 4px;}
+.pw-btn:last-child{border-radius:0 4px 4px 0;}
+.pw-btn:not(:first-child){border-left:none;}
+.pw-btn.active{background:rgba(0,229,255,.1);border-color:var(--cyan);color:var(--cyan);}
+.pw-btn:hover:not(.active){color:var(--text);}
+.prec-go-btn{background:var(--cyan);border:none;color:#000;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;padding:8px 18px;border-radius:6px;cursor:pointer;transition:opacity .15s;}
+.prec-go-btn:hover{opacity:.85;}
+.prec-go-btn:disabled{opacity:.3;cursor:default;}
+
+.prec-loading{display:flex;flex-direction:column;align-items:center;gap:14px;padding:32px 0;}
+.prec-content{}
+.prec-team-section{margin-bottom:24px;}
+.prec-team-hdr{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:3px;margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+.prec-team-hdr span{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;font-weight:normal;}
+.prec-leg-group{margin-bottom:18px;}
+.prec-leg-group-hdr{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:3px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.prec-leg-group-hdr::after{content:'';flex:1;height:1px;background:var(--border);}
+.prec-cards-row{display:grid;grid-template-columns:1fr;gap:10px;}
+@media(min-width:600px){.prec-cards-row{grid-template-columns:repeat(3,1fr);}}
+.prec-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px;position:relative;}
+.prec-card-rate{font-family:'Bebas Neue',sans-serif;font-size:30px;line-height:1;margin-bottom:4px;}
+.prec-card-type{font-family:'DM Mono',monospace;font-size:7px;letter-spacing:1px;color:var(--muted);margin-bottom:8px;}
+.prec-card-legs{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
+.prec-leg-line{font-family:'DM Mono',monospace;font-size:9px;color:var(--text);display:flex;align-items:center;gap:5px;}
+.prec-leg-dot{width:5px;height:5px;border-radius:50%;background:var(--cyan);flex-shrink:0;}
+.prec-corr{display:inline-block;font-family:'DM Mono',monospace;font-size:8px;padding:2px 7px;border-radius:3px;margin-bottom:6px;}
+.prec-corr-pos{background:rgba(0,230,118,.1);border:1px solid rgba(0,230,118,.25);color:var(--green);}
+.prec-corr-neg{background:rgba(255,23,68,.1);border:1px solid rgba(255,23,68,.25);color:var(--red);}
+.prec-corr-neu{background:rgba(74,101,128,.1);border:1px solid var(--border);color:var(--muted);}
+.prec-corr-na{background:rgba(74,101,128,.1);border:1px solid var(--border);color:var(--muted2);}
+.prec-sample{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);margin-bottom:8px;}
+.prec-add-btn{width:100%;background:transparent;border:1px solid var(--border2);color:var(--cyan);font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;padding:6px;border-radius:5px;cursor:pointer;transition:all .15s;}
+.prec-add-btn:hover{background:rgba(0,229,255,.06);border-color:var(--cyan);}
+.prec-hr-bar{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-bottom:8px;}
+.prec-hr-fill{height:100%;border-radius:2px;}
+.prec-no-combos{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted2);padding:8px 0;}
+
 </style>
 </head>
 <body>
@@ -249,6 +373,7 @@ header{
       <div class="search-sub">NBA PLAYER ANALYSIS · 2025–26</div>
       <input class="search-field" id="searchField" type="text" placeholder="Player name (e.g. Wembanyama)" autocomplete="off">
       <button class="search-go" id="searchBtn">ANALYZE PLAYER</button>
+      <button class="parlay-lab-btn" id="parlayLabBtn">⚡ PARLAY LAB</button>
       <div class="section-lbl" id="recentLabel" style="display:none">RECENT · CACHED</div>
       <div class="chip-row" id="recentChips"></div>
     </div>
@@ -317,6 +442,78 @@ header{
       <div class="tab-panel" id="tp-teams">
         <div id="teamsContent">
           <div class="loading-msg" style="padding:24px 0;text-align:center;">Click to load team rankings</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PARLAY LAB -->
+  <div class="page" id="page-parlay">
+    <div class="parlay-wrap">
+      <div class="parlay-hdr">
+        <div class="parlay-title">PARLAY LAB</div>
+        <div class="parlay-sub">MULTI-LEG PROP CALCULATOR &amp; AUTO-RECOMMENDATIONS</div>
+      </div>
+
+      <div class="parlay-grid">
+        <!-- LEFT: Builder -->
+        <div class="parlay-builder">
+          <div class="sec-lbl">BUILD YOUR PARLAY</div>
+          <div class="pleg-search-row">
+            <input class="pleg-search-inp" id="plegSearchInp" type="text" placeholder="Search player name..." autocomplete="off">
+            <button class="pleg-add-btn" id="plegAddBtn">ADD</button>
+          </div>
+          <div class="pleg-loading" id="plegLoading" style="display:none">Fetching player data...</div>
+          <div class="parlay-legs" id="parlayLegs">
+            <div class="pleg-empty" id="plegEmpty">No legs added yet. Search for a player above.</div>
+          </div>
+          <button class="parlay-calc-btn" id="parlayCalcBtn" disabled>CALCULATE PARLAY</button>
+        </div>
+
+        <!-- RIGHT: Results -->
+        <div class="parlay-results" id="parlayResults">
+          <div class="sec-lbl">PARLAY ANALYSIS</div>
+          <div class="parlay-empty-msg" id="parlayEmptyMsg">
+            Add 2+ legs and set lines to see<br>joint probability &amp; correlation analysis.
+          </div>
+        </div>
+      </div>
+
+      <!-- MATCHUP RECOMMENDATIONS -->
+      <div class="parlay-recs-section">
+        <div class="sec-lbl">AUTO-RECOMMENDED MATCHUP PARLAYS</div>
+        <div class="prec-controls">
+          <div class="prec-ctrl-group">
+            <div class="prec-ctrl-lbl">HOME TEAM</div>
+            <select class="prec-team-sel" id="precHomeTeam">
+              <option value="">Select team...</option>
+            </select>
+          </div>
+          <div class="prec-ctrl-group">
+            <div class="prec-ctrl-lbl">AWAY TEAM</div>
+            <select class="prec-team-sel" id="precAwayTeam">
+              <option value="">Select team...</option>
+            </select>
+          </div>
+          <div class="prec-ctrl-group">
+            <div class="prec-ctrl-lbl">WINDOW</div>
+            <div class="prec-window-tog" id="precWindowTog">
+              <span class="pw-btn" data-w="5">L5</span>
+              <span class="pw-btn active" data-w="10">L10</span>
+              <span class="pw-btn" data-w="20">L20</span>
+            </div>
+          </div>
+          <div class="prec-ctrl-group" style="justify-content:flex-end;">
+            <div class="prec-ctrl-lbl">&nbsp;</div>
+            <button class="prec-go-btn" id="precGoBtn" disabled>ANALYZE</button>
+          </div>
+        </div>
+        <div id="precContent">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted2);padding:12px 0;">
+            Select a matchup above to auto-generate the best multi-leg combinations.<br>
+            Backend fetches ~10 players (~40–80 sec). Results are cached for this session.
+          </div>
         </div>
       </div>
 
@@ -395,7 +592,8 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
   $id('page-' + id).classList.add('active');
   $id('scrollArea').scrollTop = 0;
-  $id('backBtn').className = 'back-btn' + (id === 'analysis' ? ' show' : '');
+  var showBack = (id === 'analysis' || id === 'parlay');
+  $id('backBtn').className = 'back-btn' + (showBack ? ' show' : '');
 }
 function goSearch() { showPage('search'); }
 
@@ -412,7 +610,7 @@ function saveToCache(name, data) {
     keys.sort(function(a,b){ return cache[a].ts - cache[b].ts; });
     delete cache[keys[0]];
   }
-  localStorage.setItem('nba_cache', JSON.stringify(cache));
+  try { localStorage.setItem('nba_cache', JSON.stringify(cache)); } catch(e) {}
 }
 function loadFromCache(name) {
   var cache = getCache();
@@ -425,7 +623,7 @@ function getRecentNames() {
 function pushRecent(name) {
   var r = getRecentNames().filter(function(x){ return x.toLowerCase() !== name.toLowerCase(); });
   r.unshift(name);
-  localStorage.setItem('nba_recent', JSON.stringify(r.slice(0, 8)));
+  try { localStorage.setItem('nba_recent', JSON.stringify(r.slice(0, 8))); } catch(e) {}
 }
 function renderRecent() {
   var names = getRecentNames();
@@ -1109,6 +1307,589 @@ function initials(name) {
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ══════════════════════════════════════════════════════════════════
+// PARLAY LAB
+// ══════════════════════════════════════════════════════════════════
+
+// ── State ──────────────────────────────────────────────────────────
+var parlayLegs = [];       // [{playerData, team, stat, line}, …]
+var parlayRecsCache = {};  // keyed "LAL-BOS-10"
+var parlayRecsWindow = 10;
+
+var NBA_TEAMS = [
+  'ATL','BOS','BKN','CHA','CHI','CLE','DAL','DEN','DET','GSW',
+  'HOU','IND','LAC','LAL','MEM','MIA','MIL','MIN','NOP','NYK',
+  'OKC','ORL','PHI','PHX','POR','SAC','SAS','TOR','UTA','WAS'
+];
+
+var PARLAY_STAT_OPTS = [
+  {key:'pts', label:'PTS — Points'},
+  {key:'reb', label:'REB — Rebounds'},
+  {key:'ast', label:'AST — Assists'},
+  {key:'3pm', label:'3PM — 3-Pointers'},
+  {key:'stl', label:'STL — Steals'},
+  {key:'blk', label:'BLK — Blocks'},
+];
+
+// ── Init (wired inside DOMContentLoaded below) ─────────────────────
+function initParlay() {
+  // "PARLAY LAB" button on search page
+  $id('parlayLabBtn').addEventListener('click', goParlay);
+
+  // Add player button
+  $id('plegAddBtn').addEventListener('click', function() {
+    var name = $id('plegSearchInp').value.trim();
+    if (name) addParlayPlayer(name);
+  });
+  $id('plegSearchInp').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { var name = this.value.trim(); if (name) addParlayPlayer(name); }
+  });
+
+  // Calculate button
+  $id('parlayCalcBtn').addEventListener('click', calculateParlay);
+
+  // Populate team dropdowns
+  var homeEl = $id('precHomeTeam');
+  var awayEl = $id('precAwayTeam');
+  NBA_TEAMS.forEach(function(abbr) {
+    homeEl.innerHTML += '<option value="'+abbr+'">'+abbr+'</option>';
+    awayEl.innerHTML += '<option value="'+abbr+'">'+abbr+'</option>';
+  });
+  function updateGoBtn() {
+    var ok = $id('precHomeTeam').value && $id('precAwayTeam').value &&
+             $id('precHomeTeam').value !== $id('precAwayTeam').value;
+    $id('precGoBtn').disabled = !ok;
+  }
+  homeEl.addEventListener('change', updateGoBtn);
+  awayEl.addEventListener('change', updateGoBtn);
+
+  // Window toggle
+  $id('precWindowTog').querySelectorAll('.pw-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      $id('precWindowTog').querySelectorAll('.pw-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      parlayRecsWindow = parseInt(btn.dataset.w, 10);
+    });
+  });
+
+  // ANALYZE button
+  $id('precGoBtn').addEventListener('click', function() {
+    var home = $id('precHomeTeam').value;
+    var away = $id('precAwayTeam').value;
+    if (home && away && home !== away) loadMatchupParlays(home, away, parlayRecsWindow);
+  });
+}
+
+// ── Navigation ─────────────────────────────────────────────────────
+function goParlay() { showPage('parlay'); }
+
+// ── Add player to parlay ───────────────────────────────────────────
+async function addParlayPlayer(name) {
+  var addBtn = $id('plegAddBtn');
+  var loadEl = $id('plegLoading');
+  addBtn.disabled = true;
+  loadEl.style.display = 'block';
+  loadEl.textContent = 'Loading ' + name + '…';
+  $id('plegSearchInp').value = '';
+
+  try {
+    // Cache-first (reuse existing player cache)
+    var cached = loadFromCache(name);
+    var playerData;
+    if (cached && (Date.now() - cached.ts) < 7200000) {
+      playerData = cached.data;
+    } else {
+      if (!serverOnline) { throw new Error('Server offline — start python server.py'); }
+      var r = await fetch(API_BASE + '/api/player?name=' + encodeURIComponent(name), { signal: AbortSignal.timeout(60000) });
+      if (!r.ok) { var b = await r.json().catch(function(){return{};}); throw new Error(b.error || 'HTTP '+r.status); }
+      playerData = await r.json();
+      playerData._fetchedAt = new Date().toISOString();
+      saveToCache(name, playerData);
+    }
+
+    // Check if already in parlay (allow different stats from same player)
+    // Push a new leg entry
+    var defaultStat = 'pts';
+    var sa = playerData.seasonAvg || {};
+    var defaultLine = autoLine(sa[defaultStat] || 0);
+    parlayLegs.push({ playerData: playerData, stat: defaultStat, line: defaultLine });
+    renderParlayLegs();
+    updateCalcBtn();
+  } catch(err) {
+    loadEl.textContent = '⚠ ' + err.message;
+    setTimeout(function(){ loadEl.style.display='none'; loadEl.textContent=''; }, 4000);
+  } finally {
+    addBtn.disabled = false;
+    if (!loadEl.textContent.startsWith('⚠')) { loadEl.style.display = 'none'; loadEl.textContent = ''; }
+  }
+}
+
+function autoLine(avgVal) {
+  // Mirror backend: floor(avg*2-1)/2, min 0.5
+  return Math.max(0.5, Math.floor(avgVal * 2 - 1) / 2);
+}
+
+// ── Render leg cards ───────────────────────────────────────────────
+function renderParlayLegs() {
+  var container = $id('parlayLegs');
+  if (!parlayLegs.length) {
+    container.innerHTML = '<div class="pleg-empty" id="plegEmpty">No legs added yet. Search for a player above.</div>';
+    return;
+  }
+  container.innerHTML = parlayLegs.map(function(leg, idx) {
+    var d = leg.playerData;
+    var sa = d.seasonAvg || {};
+    var statAvg = sa[leg.stat] || 0;
+    var rates = computeLegHitRates(d.games || [], leg.stat, leg.line);
+
+    var statOptsHtml = PARLAY_STAT_OPTS.map(function(o) {
+      return '<option value="'+o.key+'"'+(leg.stat===o.key?' selected':'')+'>'+o.label+'</option>';
+    }).join('');
+
+    var pillsHtml = ['L5','L10','L20','Season'].map(function(w) {
+      var r = rates[w];
+      if (!r || r.total === 0) return '';
+      var pct = Math.round(r.rate * 100);
+      var cc = cls(r.rate);
+      return '<div class="pleg-pill"><span class="pleg-pill-lbl">'+w+'</span>'
+        +'<span class="pleg-pill-val pp-'+cc+'">'+pct+'%</span></div>';
+    }).join('');
+
+    return '<div class="pleg-card" data-idx="'+idx+'">'
+      +'<div class="pleg-card-head">'
+      +  '<div><span class="pleg-player-name">'+escHtml(d.name||'')+'</span><span class="pleg-team-badge">'+escHtml(d.team||'')+'</span></div>'
+      +  '<span class="pleg-remove" data-idx="'+idx+'" title="Remove leg">✕</span>'
+      +'</div>'
+      +'<div class="pleg-config">'
+      +  '<select class="pleg-stat-sel" data-idx="'+idx+'">'+statOptsHtml+'</select>'
+      +  '<input class="pleg-line-inp2" type="number" step="0.5" min="0.5" value="'+leg.line+'" data-idx="'+idx+'">'
+      +  '<div class="pleg-avg-hint">AVG <b>'+fmt(statAvg)+'</b></div>'
+      +'</div>'
+      +'<div class="pleg-rate-pills">'+pillsHtml+'</div>'
+      +'</div>';
+  }).join('');
+
+  // Wire up events on newly rendered cards
+  container.querySelectorAll('.pleg-remove').forEach(function(el) {
+    el.addEventListener('click', function() {
+      parlayLegs.splice(parseInt(el.dataset.idx, 10), 1);
+      renderParlayLegs();
+      updateCalcBtn();
+      if (parlayLegs.length >= 2) calculateParlay(); else clearParlayResults();
+    });
+  });
+  container.querySelectorAll('.pleg-stat-sel').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+      var idx = parseInt(sel.dataset.idx, 10);
+      parlayLegs[idx].stat = sel.value;
+      var sa = parlayLegs[idx].playerData.seasonAvg || {};
+      parlayLegs[idx].line = autoLine(sa[sel.value] || 0);
+      renderParlayLegs();
+      if (parlayLegs.length >= 2) calculateParlay();
+    });
+  });
+  container.querySelectorAll('.pleg-line-inp2').forEach(function(inp) {
+    inp.addEventListener('input', function() {
+      var idx = parseInt(inp.dataset.idx, 10);
+      var v = parseFloat(inp.value);
+      if (!isNaN(v) && v > 0) {
+        parlayLegs[idx].line = v;
+        renderParlayLegs();
+        if (parlayLegs.length >= 2) calculateParlay();
+      }
+    });
+  });
+}
+
+// ── Compute hit rates (client-side) ───────────────────────────────
+function computeLegHitRates(games, stat, line) {
+  var windows = {L5:5, L10:10, L20:20, Season:games.length};
+  var result = {};
+  Object.keys(windows).forEach(function(lbl) {
+    var size = windows[lbl];
+    var slice = games.slice(0, size);
+    var hits = slice.filter(function(g){ return gv(g, stat) >= line; }).length;
+    result[lbl] = { hits: hits, total: slice.length, rate: slice.length ? hits/slice.length : 0 };
+  });
+  return result;
+}
+
+// ── Update calculate button ────────────────────────────────────────
+function updateCalcBtn() {
+  var valid = parlayLegs.length >= 2 && parlayLegs.every(function(l) { return l.line > 0; });
+  $id('parlayCalcBtn').disabled = !valid;
+}
+
+// ── Calculate parlay (all client-side) ────────────────────────────
+function calculateParlay() {
+  if (parlayLegs.length < 2) return;
+
+  var windows = ['L5','L10','L20','Season'];
+  var windowSizes = {L5:5, L10:10, L20:20};
+
+  // Group legs by team
+  var byTeam = {};
+  parlayLegs.forEach(function(leg) {
+    var t = leg.playerData.team || '_cross';
+    if (!byTeam[t]) byTeam[t] = [];
+    byTeam[t].push(leg);
+  });
+
+  // For each window, compute per-team empirical and combine cross-team naively
+  var windowResults = {};
+  windows.forEach(function(w) {
+    var size = windowSizes[w] || 9999;
+    var teamEmpirical = {};
+    var teamNaive = {};
+
+    Object.keys(byTeam).forEach(function(team) {
+      var teamLegs = byTeam[team];
+      // Align games by date
+      var dateSets = teamLegs.map(function(leg) {
+        var games = (leg.playerData.games || []).slice(0, size);
+        var dateMap = {};
+        games.forEach(function(g) { dateMap[g.date] = g; });
+        return dateMap;
+      });
+      var sharedDates = Object.keys(dateSets[0]).filter(function(d) {
+        return dateSets.every(function(ds) { return ds[d] !== undefined; });
+      });
+
+      var n = sharedDates.length;
+      if (n === 0) { teamEmpirical[team] = null; teamNaive[team] = null; return; }
+
+      // Individual rates on shared dates
+      var indivRates = teamLegs.map(function(leg) {
+        var hits = sharedDates.filter(function(d) {
+          return gv(dateSets[0][d] || {}, leg.stat); // fallback
+        });
+        // Recompute properly
+        var legHits = sharedDates.filter(function(d) {
+          var g = dateSets[teamLegs.indexOf(leg)][d] || {};
+          return gv(g, leg.stat) >= leg.line;
+        }).length;
+        return legHits / n;
+      });
+
+      var naive = indivRates.reduce(function(p, r) { return p * r; }, 1);
+
+      // Empirical: all legs hit on same date
+      var empiricalHits = sharedDates.filter(function(d) {
+        return teamLegs.every(function(leg, i) {
+          var g = dateSets[i][d] || {};
+          return gv(g, leg.stat) >= leg.line;
+        });
+      }).length;
+      var empirical = empiricalHits / n;
+
+      teamEmpirical[team] = { rate: empirical, hits: empiricalHits, n: n };
+      teamNaive[team] = naive;
+    });
+
+    // Combined probability
+    var combinedEmpirical = 1;
+    var combinedNaive = 1;
+    var hasNull = false;
+    Object.keys(byTeam).forEach(function(team) {
+      if (teamEmpirical[team] === null) { hasNull = true; }
+      else { combinedEmpirical *= teamEmpirical[team].rate; }
+      if (teamNaive[team] === null) hasNull = true;
+      else { combinedNaive *= teamNaive[team]; }
+    });
+    if (hasNull) combinedEmpirical = null;
+
+    // Individual rates (full game log for display)
+    var indivDisplay = parlayLegs.map(function(leg) {
+      var rates = computeLegHitRates(leg.playerData.games || [], leg.stat, leg.line);
+      return { name: leg.playerData.name, team: leg.playerData.team, stat: leg.stat, line: leg.line, rates: rates };
+    });
+
+    windowResults[w] = {
+      empirical: combinedEmpirical,
+      naive: combinedNaive,
+      corrRatio: (combinedEmpirical !== null && combinedNaive > 0) ? combinedEmpirical / combinedNaive : null,
+      byTeam: teamEmpirical,
+      indiv: indivDisplay,
+      sameTeam: Object.keys(byTeam).length === 1,
+    };
+  });
+
+  renderParlayResults(windowResults);
+}
+
+function clearParlayResults() {
+  var el = $id('parlayResults');
+  el.innerHTML = '<div class="sec-lbl">PARLAY ANALYSIS</div>'
+    +'<div class="parlay-empty-msg" id="parlayEmptyMsg">Add 2+ legs and set lines to see<br>joint probability &amp; correlation analysis.</div>';
+}
+
+function renderParlayResults(wResults) {
+  var el = $id('parlayResults');
+  var primary = wResults['L10'] || wResults['Season'];
+  if (!primary) { clearParlayResults(); return; }
+
+  var sameTeam = primary.sameTeam;
+  var mainRate = primary.empirical !== null ? primary.empirical : primary.naive;
+  var mainPct  = Math.round(mainRate * 100);
+  var mainType = (primary.empirical !== null) ? 'EMPIRICAL (SAME TEAM)' : 'NAIVE INDEPENDENCE';
+
+  var corrHtml = '';
+  if (primary.corrRatio !== null) {
+    var cr = primary.corrRatio;
+    var corrCls = cr > 1.05 ? 'corr-pos' : cr < 0.95 ? 'corr-neg' : 'corr-neu';
+    var corrLbl = cr > 1.05 ? '▲ POSITIVE CORRELATION — legs tend to hit together (EDGE)'
+                : cr < 0.95 ? '▼ NEGATIVE CORRELATION — legs tend to cancel'
+                : '≈ INDEPENDENT — no correlation edge';
+    corrHtml = '<div class="corr-badge '+corrCls+'">'+corrLbl+'</div>'
+      +'<div style="font-family:DM Mono,monospace;font-size:9px;color:var(--muted);margin-bottom:10px;">'
+      +'Corr ratio: <b style="color:var(--text)">'+cr.toFixed(2)+'x</b> &nbsp;·&nbsp; Empirical: '
+      +'<b>'+Math.round(primary.empirical*100)+'%</b> &nbsp;vs&nbsp; Naive: <b>'+Math.round(primary.naive*100)+'%</b></div>';
+  } else if (!sameTeam) {
+    corrHtml = '<div class="corr-badge corr-neu">CROSS-TEAM — naive independence (no shared games)</div>';
+  }
+
+  // Window cards
+  var winHtml = ['L5','L10','L20','Season'].map(function(w) {
+    var wr = wResults[w];
+    if (!wr) return '';
+    var rate = wr.empirical !== null ? wr.empirical : wr.naive;
+    var pct  = Math.round(rate * 100);
+    var c    = cls(rate);
+    return '<div class="prob-win-card">'
+      +'<div class="prob-win-lbl">'+w+'</div>'
+      +'<div class="prob-win-val p-'+c+'">'+pct+'%</div>'
+      +'<div class="prob-win-type">'+(wr.empirical!==null?'EMPIRICAL':'NAIVE')+'</div>'
+      +'</div>';
+  }).join('');
+
+  // Individual rates table
+  var indiv = primary.indiv || [];
+  var tblHtml = '<table class="leg-rates-tbl"><thead><tr>'
+    +'<th>PLAYER / STAT</th><th>L5</th><th>L10</th><th>L20</th><th>SEASON</th>'
+    +'</tr></thead><tbody>';
+  indiv.forEach(function(leg) {
+    var statLabel = PARLAY_STAT_OPTS.find(function(o){ return o.key===leg.stat; });
+    var label = (statLabel ? statLabel.label.split(' ')[0] : leg.stat.toUpperCase()) + ' ' + leg.line + '+';
+    tblHtml += '<tr><td>'+escHtml(leg.name)+' <span style="color:var(--muted);font-size:8px;">'+label+'</span></td>';
+    ['L5','L10','L20','Season'].forEach(function(w) {
+      var r = leg.rates[w];
+      if (!r || !r.total) { tblHtml += '<td style="color:var(--muted2)">—</td>'; return; }
+      var pct = Math.round(r.rate*100);
+      var c = cls(r.rate);
+      tblHtml += '<td class="p-'+c+'">'+pct+'%</td>';
+    });
+    tblHtml += '</tr>';
+  });
+  tblHtml += '</tbody></table>';
+
+  // Sample size info
+  var sampleNote = '';
+  Object.keys({L5:5,L10:10}).forEach(function(w) {
+    var wr = wResults[w];
+    if (wr && wr.byTeam) {
+      Object.keys(wr.byTeam).forEach(function(t) {
+        if (wr.byTeam[t] && wr.byTeam[t].n < 10) {
+          sampleNote = '<div class="parlay-warn">⚠ Small shared sample ('+wr.byTeam[t].n+' games) — directional only. Use Season window for more confidence.</div>';
+        }
+      });
+    }
+  });
+
+  el.innerHTML = '<div class="sec-lbl">PARLAY ANALYSIS — '+parlayLegs.length+' LEGS</div>'
+    +'<div class="prob-big-row">'
+    +'  <div class="prob-big p-'+cls(mainRate)+'">'+mainPct+'%</div>'
+    +'  <div class="prob-big-lbl">JOINT HIT RATE<br>'+mainType+'<br>L10 WINDOW</div>'
+    +'</div>'
+    +corrHtml
+    +'<div class="prob-windows">'+winHtml+'</div>'
+    +'<div class="sec-lbl" style="margin-top:12px;">INDIVIDUAL LEGS</div>'
+    +tblHtml
+    +sampleNote;
+}
+
+// ── Matchup recommendations ────────────────────────────────────────
+async function loadMatchupParlays(home, away, window) {
+  var cacheKey = home+'-'+away+'-'+window;
+  if (parlayRecsCache[cacheKey]) {
+    renderRecCards(parlayRecsCache[cacheKey]);
+    return;
+  }
+
+  var content = $id('precContent');
+  content.innerHTML = '<div class="prec-loading">'
+    +'<div class="dots"><span></span><span></span><span></span></div>'
+    +'<div class="loading-msg">Fetching players for '+home+' vs '+away+'…<br>'
+    +'This takes 40–80 seconds (fetching ~10 player game logs).</div></div>';
+
+  try {
+    if (!serverOnline) throw new Error('Server offline — start python server.py');
+    var url = API_BASE+'/api/matchup-parlays?home='+home+'&away='+away+'&window='+window;
+    var r = await fetch(url, { signal: AbortSignal.timeout(180000) });
+    if (!r.ok) { var b = await r.json().catch(function(){return{};}); throw new Error(b.error || 'HTTP '+r.status); }
+    var data = await r.json();
+    parlayRecsCache[cacheKey] = data;
+    renderRecCards(data);
+  } catch(err) {
+    content.innerHTML = '<div class="error-box" style="margin:0;"><b>Failed to load recommendations</b><br><br>'+escHtml(err.message)+'</div>';
+  }
+}
+
+function renderRecCards(data) {
+  var content = $id('precContent');
+  var html = '';
+
+  if (data.warnings && data.warnings.length) {
+    html += '<div class="parlay-warn" style="margin-bottom:16px;">'+data.warnings.map(escHtml).join('<br>')+'</div>';
+  }
+
+  function renderComboSection(title, combosObj, teamColor) {
+    if (!combosObj || Object.keys(combosObj).length === 0) return '';
+    var s = '<div class="prec-team-section">'
+      +'<div class="prec-team-hdr" style="color:'+teamColor+';">'+escHtml(title)+'<span>SAME-TEAM PARLAYS</span></div>';
+
+    [2,3,4,5].forEach(function(n) {
+      var combos = combosObj[String(n)];
+      if (!combos || !combos.length) return;
+      s += '<div class="prec-leg-group">'
+        +'<div class="prec-leg-group-hdr">'+n+'-LEG PARLAYS</div>'
+        +'<div class="prec-cards-row">';
+      combos.forEach(function(combo) {
+        s += buildRecCard(combo, false);
+      });
+      s += '</div></div>';
+    });
+    s += '</div>';
+    return s;
+  }
+
+  function renderCrossSection(combosObj) {
+    if (!combosObj || Object.keys(combosObj).length === 0) return '';
+    var s = '<div class="prec-team-section">'
+      +'<div class="prec-team-hdr" style="color:var(--gold);">'+escHtml(data.home_team)+' + '+escHtml(data.away_team)+' <span>CROSS-TEAM (NAIVE)</span></div>';
+    [2,3,4,5].forEach(function(n) {
+      var combos = combosObj[String(n)];
+      if (!combos || !combos.length) return;
+      s += '<div class="prec-leg-group">'
+        +'<div class="prec-leg-group-hdr">'+n+'-LEG CROSS-TEAM</div>'
+        +'<div class="prec-cards-row">';
+      combos.forEach(function(combo) {
+        s += buildRecCard(combo, true);
+      });
+      s += '</div></div>';
+    });
+    s += '</div>';
+    return s;
+  }
+
+  html += renderComboSection(data.home_team, data.home_combos, 'var(--cyan)');
+  html += renderComboSection(data.away_team, data.away_combos, 'var(--orange)');
+  html += renderCrossSection(data.cross_team_combos);
+
+  if (!html.trim()) {
+    html = '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted);padding:16px 0;">No viable combinations found. Try a larger window or check player availability.</div>';
+  }
+
+  content.innerHTML = html;
+
+  // Wire "ADD TO BUILDER" buttons
+  content.querySelectorAll('.prec-add-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var legsJson = btn.dataset.legs;
+      try {
+        var legs = JSON.parse(legsJson);
+        addRecommendedLegs(legs);
+      } catch(e) {}
+    });
+  });
+}
+
+function buildRecCard(combo, isCross) {
+  var rate = isCross ? combo.naive_rate : combo.empirical_rate;
+  var pct  = rate !== null ? Math.round(rate * 100) : '—';
+  var rc   = rate !== null ? cls(rate) : 'n';
+
+  // Rate bar
+  var barWidth = rate !== null ? Math.round(rate * 100) : 0;
+  var barColor = rc === 'so' ? 'var(--green)' : rc === 'lo' ? 'rgba(0,230,118,.6)'
+               : rc === 'su' ? 'var(--red)'   : rc === 'lu' ? 'rgba(255,23,68,.5)'
+               : 'var(--muted2)';
+
+  // Correlation badge
+  var corrHtml = '';
+  if (!isCross && combo.correlation_ratio !== null) {
+    var cr = combo.correlation_ratio;
+    var corrCls2 = cr > 1.05 ? 'prec-corr-pos' : cr < 0.95 ? 'prec-corr-neg' : 'prec-corr-neu';
+    corrHtml = '<div class="prec-corr '+corrCls2+'">CORR '+cr.toFixed(2)+'x</div>';
+  } else if (isCross) {
+    corrHtml = '<div class="prec-corr prec-corr-na">CROSS-TEAM</div>';
+  }
+
+  var legs = combo.legs || [];
+  var legsHtml = legs.map(function(leg) {
+    var statLabel = leg.stat_label || leg.stat.toUpperCase();
+    var indivPct = leg.individual_rate !== undefined ? Math.round(leg.individual_rate*100)+'%' : '';
+    return '<div class="prec-leg-line">'
+      +'<span class="prec-leg-dot"></span>'
+      +escHtml(leg.player)+' — '+statLabel+' '+leg.line+'+'
+      +(indivPct ? ' <span style="color:var(--muted);font-size:8px;">('+indivPct+')</span>' : '')
+      +'</div>';
+  }).join('');
+
+  var sampleNote = (combo.sample_size !== null && combo.sample_size !== undefined)
+    ? combo.sample_size + ' games'
+    : '';
+  if (combo.hits !== null && combo.hits !== undefined && !isCross) {
+    sampleNote = combo.hits + '/' + combo.sample_size + ' games hit';
+  }
+
+  // Encode legs for "ADD TO BUILDER" button
+  var addPayload = JSON.stringify(legs.map(function(leg) {
+    return { player: leg.player, stat: leg.stat, line: leg.line };
+  }));
+
+  return '<div class="prec-card">'
+    +'<div class="prec-card-rate p-'+rc+'">'+pct+'%</div>'
+    +'<div class="prec-card-type">'+(isCross?'NAIVE RATE':'EMPIRICAL HIT RATE')+'</div>'
+    +'<div class="prec-hr-bar"><div class="prec-hr-fill" style="width:'+barWidth+'%;background:'+barColor+';"></div></div>'
+    +corrHtml
+    +'<div class="prec-card-legs">'+legsHtml+'</div>'
+    +'<div class="prec-sample">'+escHtml(sampleNote)+'</div>'
+    +'<button class="prec-add-btn" data-legs=\''+escHtml(addPayload)+'\'>+ ADD TO BUILDER</button>'
+    +'</div>';
+}
+
+async function addRecommendedLegs(legDefs) {
+  // legDefs: [{player, stat, line}, …]
+  for (var i = 0; i < legDefs.length; i++) {
+    var ld = legDefs[i];
+    var cached = loadFromCache(ld.player);
+    if (cached && (Date.now() - cached.ts) < 7200000) {
+      parlayLegs.push({ playerData: cached.data, stat: ld.stat, line: ld.line });
+    } else if (serverOnline) {
+      try {
+        var r = await fetch(API_BASE+'/api/player?name='+encodeURIComponent(ld.player), { signal: AbortSignal.timeout(60000) });
+        if (r.ok) {
+          var pd = await r.json();
+          pd._fetchedAt = new Date().toISOString();
+          saveToCache(ld.player, pd);
+          parlayLegs.push({ playerData: pd, stat: ld.stat, line: ld.line });
+        }
+      } catch(e) {}
+    }
+  }
+  renderParlayLegs();
+  updateCalcBtn();
+  if (parlayLegs.length >= 2) calculateParlay();
+  // Scroll to builder
+  $id('parlayLegs').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Wire up initParlay inside DOMContentLoaded ─────────────────────
+// (patched below — append after the existing DOMContentLoaded block)
+document.addEventListener('DOMContentLoaded', function() {
+  initParlay();
+});
 </script>
 </body>
 </html>
