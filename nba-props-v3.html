@@ -182,6 +182,30 @@ header{
 .ic-lbl{font-family:'DM Mono',monospace;font-size:7px;color:var(--muted);letter-spacing:1px;margin-bottom:3px;}
 .ic-val{font-family:'DM Mono',monospace;font-size:10px;color:var(--text);}
 
+/* H2H SUMMARY */
+.h2h-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.h2h-card{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:10px 12px;position:relative;}
+.h2h-card.h2h-hot{border-color:rgba(0,230,118,.3);}
+.h2h-card.h2h-cold{border-color:rgba(255,23,68,.3);}
+.h2h-stat-lbl{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;}
+.h2h-avg{font-family:'Bebas Neue',sans-serif;font-size:28px;line-height:1;}
+.h2h-delta{font-family:'DM Mono',monospace;font-size:9px;margin-top:1px;}
+.h2h-delta.dh{color:var(--green);} .h2h-delta.dc{color:var(--red);} .h2h-delta.dn{color:var(--muted);}
+.h2h-n{position:absolute;top:7px;right:8px;font-family:'DM Mono',monospace;font-size:7px;color:var(--muted2);}
+.h2h-range-row{display:flex;align-items:center;gap:5px;margin-top:7px;}
+.h2h-range-lbl{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);width:22px;flex-shrink:0;}
+.h2h-range-lbl.h2h-rl-max{text-align:left;}
+.h2h-range-bar{flex:1;height:4px;background:var(--bg3);border-radius:2px;position:relative;}
+.h2h-range-fill{position:absolute;left:0;right:0;height:100%;border-radius:2px;background:var(--muted2);}
+.h2h-range-dot{position:absolute;width:6px;height:6px;border-radius:50%;top:-1px;transform:translateX(-50%);}
+.h2h-range-dot.dh{background:var(--green);box-shadow:0 0 4px rgba(0,230,118,.5);}
+.h2h-range-dot.dc{background:var(--red);box-shadow:0 0 4px rgba(255,23,68,.5);}
+.h2h-range-dot.dn{background:var(--muted);}
+.h2h-sample-warn{font-family:'DM Mono',monospace;font-size:8px;color:var(--warn);display:flex;align-items:center;gap:5px;margin-bottom:8px;}
+.h2h-details{margin-top:2px;}
+.h2h-details summary{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--muted);cursor:pointer;padding:6px 0;user-select:none;list-style:none;}
+.h2h-details summary:hover{color:var(--text);}
+
 /* INTEL */
 .intel-row{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:10px 16px 6px;scrollbar-width:none;background:var(--bg2);border-bottom:1px solid var(--border);}
 .intel-row::-webkit-scrollbar{display:none;}
@@ -427,6 +451,7 @@ header{
           </div>
         </div>
         <div class="season-row" id="seasonRow"></div>
+        <div class="season-row" id="seasonRow2" style="margin-top:4px;opacity:.8;"></div>
         <div class="risk-flags" id="riskFlags"></div>
         <div class="save-row">
           <div class="fetched-at" id="fetchedAt"></div>
@@ -566,13 +591,22 @@ header{
 
 // ── CONSTANTS ──────────────────────────────────────────────────────────────
 const PROP_TYPES = [
-  { key:'pts',  label:'POINTS',      combo:null },
-  { key:'3pm',  label:'3-POINTERS',  combo:null },
-  { key:'reb',  label:'REBOUNDS',    combo:null },
-  { key:'ast',  label:'ASSISTS',     combo:null },
-  { key:'pra',  label:'PTS+REB+AST', combo:['pts','reb','ast'] },
-  { key:'pr',   label:'PTS+REB',     combo:['pts','reb'] },
-  { key:'pa',   label:'PTS+AST',     combo:['pts','ast'] },
+  { key:'pts',    label:'POINTS',      combo:null },
+  { key:'3pm',    label:'3-POINTERS',  combo:null },
+  { key:'reb',    label:'REBOUNDS',    combo:null },
+  { key:'ast',    label:'ASSISTS',     combo:null },
+  { key:'stl',    label:'STEALS',      combo:null },
+  { key:'blk',    label:'BLOCKS',      combo:null },
+  { key:'fgm',    label:'FG MADE',     combo:null },
+  { key:'ftm',    label:'FT MADE',     combo:null },
+  { key:'fta',    label:'FT ATT',      combo:null },
+  { key:'pf',     label:'FOULS',       combo:null },
+  { key:'tov',    label:'TURNOVERS',   combo:null },
+  { key:'pra',    label:'PTS+REB+AST', combo:['pts','reb','ast'] },
+  { key:'pr',     label:'PTS+REB',     combo:['pts','reb'] },
+  { key:'pa',     label:'PTS+AST',     combo:['pts','ast'] },
+  { key:'ra',     label:'REB+AST',     combo:['reb','ast'] },
+  { key:'stocks', label:'STL+BLK',     combo:['stl','blk'] },
 ];
 
 // ── STATE ──────────────────────────────────────────────────────────────────
@@ -797,6 +831,14 @@ function renderBanner(d, age) {
   $id('riskFlags').innerHTML = (d.riskFlags||[]).map(function(f){
     return '<span class="risk-flag">' + escHtml(f) + '</span>';
   }).join('');
+  const dd2 = sa.dd2 || 0;
+  const td3 = sa.td3 || 0;
+  const ddBadge = dd2 > 0
+    ? '<span style="font-size:8px;background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.2);color:var(--cyan);padding:1px 5px;border-radius:3px;margin-left:4px;">' + dd2 + ' DD</span>'
+    : '';
+  const tdBadge = td3 > 0
+    ? '<span style="font-size:8px;background:rgba(255,196,0,.1);border:1px solid rgba(255,196,0,.25);color:var(--gold);padding:1px 5px;border-radius:3px;margin-left:4px;">' + td3 + ' TD</span>'
+    : '';
   $id('seasonRow').innerHTML = [
     {v:fmt(sa.pts),  l:'PTS'},
     {v:fmt(sa['3pm']),l:'3PM'},
@@ -806,13 +848,25 @@ function renderBanner(d, age) {
     {v:fmt(sa.usg),  l:'USG%'},
   ].map(function(s){
     return '<div class="sstat"><div class="sstat-val">' + s.v + '</div><div class="sstat-lbl">' + s.l + '</div></div>';
+  }).join('')
+  + (dd2 > 0 || td3 > 0 ? '<div style="grid-column:1/-1;display:flex;gap:4px;margin-top:2px;">' + ddBadge + tdBadge + '</div>' : '');
+  // Second row: advanced stats
+  $id('seasonRow2').innerHTML = [
+    {v: sa.ts_pct   ? sa.ts_pct.toFixed(1)+'%'   : '—', l:'TS%'},
+    {v: sa.efg_pct  ? sa.efg_pct.toFixed(1)+'%'  : '—', l:'EFG%'},
+    {v: sa.ast_pct  ? sa.ast_pct.toFixed(1)+'%'  : '—', l:'AST%'},
+    {v: sa.ast_tov  ? sa.ast_tov.toFixed(1)       : '—', l:'AST/TO'},
+    {v: sa.reb_pct  ? sa.reb_pct.toFixed(1)+'%'  : '—', l:'REB%'},
+    {v: sa.pie      ? sa.pie.toFixed(1)+'%'       : '—', l:'PIE'},
+  ].map(function(s){
+    return '<div class="sstat"><div class="sstat-val" style="font-size:14px;">' + s.v + '</div><div class="sstat-lbl">' + s.l + '</div></div>';
   }).join('');
 }
 
 function renderOverview(d) {
   const games = d.games || [];
   const sa = d.seasonAvg || {};
-  const SK = [{k:'pts',l:'PTS'},{k:'3pm',l:'3PM'},{k:'reb',l:'REB'},{k:'ast',l:'AST'}];
+  const SK = [{k:'pts',l:'PTS'},{k:'3pm',l:'3PM'},{k:'reb',l:'REB'},{k:'ast',l:'AST'},{k:'stl',l:'STL'},{k:'blk',l:'BLK'},{k:'fgm',l:'FGM'},{k:'ftm',l:'FTM'},{k:'tov',l:'TOV'},{k:'pf',l:'PF'}];
   let html = '<thead><tr><th>STAT</th><th>L5</th><th>L10</th><th>SEASON</th></tr></thead><tbody>';
   SK.forEach(function(s) {
     const sv = sa[s.k] || 0;
@@ -959,7 +1013,8 @@ function renderLog(d) {
   let html = '<thead><tr>'
     + '<th style="text-align:left">DATE</th>'
     + '<th style="text-align:left">OPP</th>'
-    + '<th>MIN</th><th>W/L</th><th>PTS</th><th>3PM</th><th>3PA</th><th>REB</th><th>AST</th><th>TOV</th><th>STL</th><th>BLK</th><th>+/-</th>'
+    + '<th>MIN</th><th>W/L</th><th>PTS</th><th>3PM</th><th>3PA</th><th>REB</th><th>AST</th><th>TOV</th><th>STL</th><th>BLK</th>'
+    + '<th>FGM</th><th>FGA</th><th>FG%</th><th>FTM</th><th>FTA</th><th>FT%</th><th>PF</th><th>+/-</th>'
     + '</tr></thead><tbody>';
 
   games.forEach(function(g) {
@@ -977,6 +1032,8 @@ function renderLog(d) {
     const pm = g.pm !== undefined && g.pm !== null ? g.pm : null;
     const pmStr = pm !== null ? (pm > 0 ? '+'+pm : String(pm)) : '—';
     const pmColor = pm > 0 ? 'color:var(--green)' : pm < 0 ? 'color:var(--red)' : '';
+    const fgPct = g.fg_pct != null ? (g.fg_pct * 100).toFixed(0) : '—';
+    const ftPct = g.ft_pct != null ? (g.ft_pct * 100).toFixed(0) : '—';
     html += '<tr>'
       + '<td>' + (g.date ? g.date.slice(5) : '—') + '</td>'
       + '<td>' + (g.opp||'—') + badges + '</td>'
@@ -987,9 +1044,16 @@ function renderLog(d) {
       + td(g.fg3a)
       + td(g.reb, 'reb')
       + td(g.ast, 'ast')
-      + td(g.tov)
-      + td(g.stl)
-      + td(g.blk)
+      + td(g.tov, 'tov')
+      + td(g.stl, 'stl')
+      + td(g.blk, 'blk')
+      + td(g.fgm, 'fgm')
+      + td(g.fga)
+      + '<td>' + fgPct + '</td>'
+      + td(g.ftm, 'ftm')
+      + td(g.fta, 'fta')
+      + '<td>' + ftPct + '</td>'
+      + td(g.pf, 'pf')
       + '<td style="' + pmColor + '">' + pmStr + '</td>'
       + '</tr>';
   });
@@ -1049,6 +1113,17 @@ function renderIntel(d) {
     chips.push({ label:'MATCHUP', val: lbl, sub: od.ptsAllowed.toFixed(1) + ' pts allowed', cls });
   }
 
+  // H2H — pts avg vs next opponent
+  if (d.opponent && saPts > 0) {
+    const vsGs = games.filter(function(g){ return g.opp === d.opponent; });
+    if (vsGs.length) {
+      const vsPts = vsGs.reduce(function(s,g){ return s+(g.pts||0); },0) / vsGs.length;
+      const r = (vsPts - saPts) / saPts;
+      const hcls = r > 0.1 ? 'hot' : r < -0.1 ? 'cold' : '';
+      chips.push({ label:'H2H vs '+d.opponent, val: vsPts.toFixed(1)+' PTS', sub: vsGs.length+'G this season', cls: hcls });
+    }
+  }
+
   // CONSISTENCY — CV on L10 pts
   if (l10.length >= 5) {
     const ptsList = l10.map(function(g){ return g.pts || 0; });
@@ -1078,6 +1153,38 @@ function renderIntel(d) {
     chips.push({ label:'USAGE', val: sa.usg.toFixed(1) + '%', sub: 'TS ' + (sa.ts_pct || 0).toFixed(1) + '%', cls });
   }
 
+  // EFFICIENCY — TS% + EFG%
+  if (sa.ts_pct && sa.efg_pct) {
+    const cls = sa.ts_pct > 58 ? 'hot' : sa.ts_pct < 50 ? 'cold' : '';
+    chips.push({ label:'EFFICIENCY', val: sa.ts_pct.toFixed(1) + '% TS', sub: 'EFG ' + sa.efg_pct.toFixed(1) + '%', cls });
+  }
+
+  // PLAYMAKING — AST% + AST/TOV
+  if (sa.ast_pct && sa.ast_pct > 0) {
+    const cls = sa.ast_tov > 3 ? 'hot' : sa.ast_tov > 0 && sa.ast_tov < 1.5 ? 'cold' : '';
+    chips.push({ label:'PLAYMAKING', val: sa.ast_pct.toFixed(1) + '% AST', sub: 'A/TO ' + (sa.ast_tov || 0).toFixed(1), cls });
+  }
+
+  // BOARDS — REB% breakdown
+  if (sa.reb_pct && sa.reb_pct > 0) {
+    const cls = sa.reb_pct > 12 ? 'hot' : '';
+    chips.push({ label:'BOARDS', val: sa.reb_pct.toFixed(1) + '% REB', sub: 'O:' + (sa.oreb_pct||0).toFixed(1) + ' D:' + (sa.dreb_pct||0).toFixed(1), cls });
+  }
+
+  // FT RATE — FTA trend (foul-drawing)
+  const l5fta = avg(l5, 'fta');
+  const saFta = sa.fta || 0;
+  if (saFta >= 1) {
+    const cls = l5fta > saFta * 1.2 ? 'hot' : l5fta < saFta * 0.7 ? 'cold' : '';
+    chips.push({ label:'FT RATE', val: l5fta.toFixed(1) + ' FTA/g', sub: 'avg ' + saFta.toFixed(1), cls });
+  }
+
+  // FOUL TROUBLE — PF trend
+  const l5pf = avg(l5, 'pf');
+  if (l5pf >= 3) {
+    chips.push({ label:'FOUL TROUBLE', val: l5pf.toFixed(1) + ' PF/g', sub: 'L5 avg — foul risk', cls: 'warn' });
+  }
+
   el.innerHTML = chips.map(function(c) {
     return '<div class="intel-chip' + (c.cls ? ' ' + c.cls : '') + '">'
       + '<div class="ic2-lbl">' + c.label + '</div>'
@@ -1085,6 +1192,89 @@ function renderIntel(d) {
       + '<div class="ic2-sub">' + c.sub + '</div>'
       + '</div>';
   }).join('');
+}
+
+// ── H2H HELPERS ────────────────────────────────────────────────────────────
+function computeH2H(games, opponent, seasonAvg) {
+  const vsGames = (games || []).filter(function(g) { return g.opp === opponent; });
+  if (!vsGames.length) return null;
+  const n = vsGames.length;
+  const STATS = [
+    { key: 'pts',  label: 'PTS', minAvg: 0 },
+    { key: 'reb',  label: 'REB', minAvg: 0 },
+    { key: 'ast',  label: 'AST', minAvg: 0 },
+    { key: '3pm',  label: '3PM', minAvg: 0 },
+    { key: 'stl',  label: 'STL', minAvg: 0.8 },
+    { key: 'blk',  label: 'BLK', minAvg: 0.5 },
+    { key: 'tov',  label: 'TOV', minAvg: 1.0, invertDelta: true },
+    { key: 'fgm',  label: 'FGM', minAvg: 1.0 },
+    { key: 'ftm',  label: 'FTM', minAvg: 0.5 },
+    { key: 'fta',  label: 'FTA', minAvg: 0.5 },
+    { key: 'pf',   label: 'PF',  minAvg: 1.0, invertDelta: true },
+  ];
+  return STATS
+    .filter(function(s) { return (seasonAvg[s.key] || 0) >= s.minAvg; })
+    .map(function(s) {
+      const vals = vsGames.map(function(g) { return gv(g, s.key); });
+      const vsAvg = vals.reduce(function(a, b) { return a + b; }, 0) / n;
+      const vsMin = Math.min.apply(null, vals);
+      const vsMax = Math.max.apply(null, vals);
+      const sa = seasonAvg[s.key] || 0;
+      const delta = vsAvg - sa;
+      const deltaRel = sa > 0 ? delta / sa : 0;
+      return {
+        key: s.key, label: s.label, n: n,
+        vsAvg: vsAvg, vsMin: vsMin, vsMax: vsMax,
+        delta: delta, deltaRel: deltaRel,
+        invertDelta: s.invertDelta || false
+      };
+    });
+}
+
+function h2hToneClass(deltaRel, invertDelta) {
+  const hot  = invertDelta ? deltaRel < -0.1 : deltaRel > 0.1;
+  const cold = invertDelta ? deltaRel > 0.1  : deltaRel < -0.1;
+  return hot ? 'dh' : cold ? 'dc' : 'dn';
+}
+
+function h2hCard(stat) {
+  const tone = h2hToneClass(stat.deltaRel, stat.invertDelta);
+  const borderCls = tone === 'dh' ? ' h2h-hot' : tone === 'dc' ? ' h2h-cold' : '';
+  const sign = stat.delta >= 0 ? '+' : '';
+  const deltaPct = (stat.deltaRel * 100).toFixed(0);
+  const deltaText = sign + stat.delta.toFixed(1) + ' (' + sign + deltaPct + '% vs avg)';
+  const range = stat.vsMax - stat.vsMin;
+  const dotPct = range > 0 ? ((stat.vsAvg - stat.vsMin) / range * 100).toFixed(1) : '50';
+  const fillHtml = range > 0 ? '<div class="h2h-range-fill"></div>' : '';
+  return '<div class="h2h-card' + borderCls + '">'
+    + '<div class="h2h-n">' + stat.n + 'G</div>'
+    + '<div class="h2h-stat-lbl">' + stat.label + '</div>'
+    + '<div class="h2h-avg">' + stat.vsAvg.toFixed(1) + '</div>'
+    + '<div class="h2h-delta ' + tone + '">' + deltaText + '</div>'
+    + '<div class="h2h-range-row">'
+    +   '<div class="h2h-range-lbl">' + stat.vsMin.toFixed(0) + '</div>'
+    +   '<div class="h2h-range-bar">' + fillHtml
+    +     '<div class="h2h-range-dot ' + tone + '" style="left:' + dotPct + '%"></div>'
+    +   '</div>'
+    +   '<div class="h2h-range-lbl h2h-rl-max">' + stat.vsMax.toFixed(0) + '</div>'
+    + '</div>'
+    + '</div>';
+}
+
+function renderH2HSummary(stats, rawTableHtml) {
+  if (!stats || !stats.length) {
+    return '<div style="font-family:\'DM Mono\',monospace;font-size:9px;color:var(--muted);padding:6px 0 10px;">No games vs this opponent in current season data.</div>';
+  }
+  const n = stats[0].n;
+  const warnHtml = n <= 2
+    ? '<div class="h2h-sample-warn">⚠ Small sample (' + n + ' game' + (n > 1 ? 's' : '') + ')</div>'
+    : '';
+  const detailsHtml = rawTableHtml
+    ? '<details class="h2h-details"><summary>SHOW RAW LOG ▾</summary>' + rawTableHtml + '</details>'
+    : '';
+  return warnHtml
+    + '<div class="h2h-grid">' + stats.map(h2hCard).join('') + '</div>'
+    + detailsHtml;
 }
 
 function renderMatchup(d) {
@@ -1095,10 +1285,19 @@ function renderMatchup(d) {
     return;
   }
   const la = {
-    pts: od.leagueAvgPts  || 22,
-    reb: od.leagueAvgReb  || 10,
-    ast: od.leagueAvgAst  || 3.5,
-    tpm: od.leagueAvgThrees || 1.5
+    pts:  od.leagueAvgPts    || 22,
+    reb:  od.leagueAvgReb    || 10,
+    ast:  od.leagueAvgAst    || 3.5,
+    tpm:  od.leagueAvgThrees || 1.5,
+    tov:  od.leagueAvgTov    || 14,
+    stl:  od.leagueAvgStl    || 8,
+    blk:  od.leagueAvgBlk    || 5,
+    ftm:  od.leagueAvgFtm    || 20,
+    fta:  od.leagueAvgFta    || 26,
+    oreb: od.leagueAvgOreb   || 10,
+    pf:   od.leagueAvgPf     || 20,
+    fgm:  od.leagueAvgFgm    || 43,
+    fga:  od.leagueAvgFga    || 89,
   };
   const dbar = function(lbl, allowed, avg) {
     const r = allowed / Math.max(avg, 0.1);
@@ -1123,39 +1322,53 @@ function renderMatchup(d) {
 
   // VS opponent history
   const vsGames = (d.games||[]).filter(function(g){ return g.opp === d.opponent; });
-  let vsHtml = '';
+  let rawVsTable = '';
   if (vsGames.length) {
-    vsHtml = '<div class="sec-lbl" style="margin-top:16px;">VS ' + d.opponent + ' THIS SEASON</div>'
-      + '<div class="log-scroll"><table class="log-tbl" style="min-width:auto;"><thead>'
-      + '<tr><th style="text-align:left">DATE</th><th>PTS</th><th>3PM</th><th>REB</th><th>AST</th></tr>'
+    rawVsTable = '<div class="log-scroll"><table class="log-tbl" style="min-width:auto;"><thead>'
+      + '<tr><th style="text-align:left">DATE</th><th>PTS</th><th>3PM</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th></tr>'
       + '</thead><tbody>';
     vsGames.forEach(function(g){
-      vsHtml += '<tr><td>' + (g.date?g.date.slice(5):'—') + '</td>'
+      rawVsTable += '<tr><td>' + (g.date?g.date.slice(5):'—') + '</td>'
         + '<td>' + (g.pts??'—') + '</td><td>' + (g['3pm']??'—') + '</td>'
-        + '<td>' + (g.reb??'—') + '</td><td>' + (g.ast??'—') + '</td></tr>';
+        + '<td>' + (g.reb??'—') + '</td><td>' + (g.ast??'—') + '</td>'
+        + '<td>' + (g.stl??'—') + '</td><td>' + (g.blk??'—') + '</td>'
+        + '<td>' + (g.tov??'—') + '</td></tr>';
     });
-    vsHtml += '</tbody></table></div>';
+    rawVsTable += '</tbody></table></div>';
   }
+  const vsStats = computeH2H(d.games || [], d.opponent, d.seasonAvg || {});
+  const h2hHtml = '<div class="sec-lbl" style="margin-top:16px;">VS ' + d.opponent + ' — THIS SEASON</div>'
+    + renderH2HSummary(vsStats, rawVsTable);
 
   el.innerHTML = '<div class="sec-lbl">DEFENSE ALLOWED TO ' + (d.position||'PLAYER') + ' POSITION</div>'
     + '<div class="def-grid">'
-    + defCard('PTS ALLOWED', od.ptsAllowed||0, la.pts)
-    + defCard('3PM ALLOWED', od.threesAllowed||0, la.tpm)
-    + defCard('REB ALLOWED', od.rebAllowed||0, la.reb)
-    + defCard('AST ALLOWED', od.astAllowed||0, la.ast)
+    + defCard('PTS ALLOWED',  od.ptsAllowed||0,    la.pts)
+    + defCard('3PM ALLOWED',  od.threesAllowed||0, la.tpm)
+    + defCard('REB ALLOWED',  od.rebAllowed||0,    la.reb)
+    + defCard('AST ALLOWED',  od.astAllowed||0,    la.ast)
+    + defCard('FGM ALLOWED',  od.fgmAllowed||0,    la.fgm)
+    + defCard('FTM ALLOWED',  od.ftmAllowed||0,    la.ftm)
+    + defCard('TOV FORCED',   od.tovForced||0,     la.tov)
+    + defCard('OREB ALLOWED', od.orebAllowed||0,   la.oreb)
     + '</div>'
     + '<div class="sec-lbl">VS LEAGUE AVERAGE</div>'
-    + dbar('PTS', od.ptsAllowed||0, la.pts)
-    + dbar('3PM', od.threesAllowed||0, la.tpm)
-    + dbar('REB', od.rebAllowed||0, la.reb)
-    + dbar('AST', od.astAllowed||0, la.ast)
+    + dbar('PTS',        od.ptsAllowed||0,    la.pts)
+    + dbar('3PM',        od.threesAllowed||0, la.tpm)
+    + dbar('REB',        od.rebAllowed||0,    la.reb)
+    + dbar('AST',        od.astAllowed||0,    la.ast)
+    + dbar('FGM',        od.fgmAllowed||0,    la.fgm)
+    + dbar('FTM',        od.ftmAllowed||0,    la.ftm)
+    + dbar('FTA',        od.ftaAllowed||0,    la.fta)
+    + dbar('TOV FORCED', od.tovForced||0,     la.tov)
+    + dbar('OREB',       od.orebAllowed||0,   la.oreb)
+    + dbar('PF',         od.pfCommitted||0,   la.pf)
     + '<div class="sec-lbl" style="margin-top:16px;">CONTEXT</div>'
     + '<div class="info-row">'
     + '<div class="info-card"><div class="ic-lbl">DEF RATING</div><div class="ic-val">' + (od.defRating||'—') + '</div></div>'
     + '<div class="info-card"><div class="ic-lbl">PACE</div><div class="ic-val">' + (od.pace||'—') + '</div></div>'
     + '<div class="info-card"><div class="ic-lbl">VENUE</div><div class="ic-val">' + (d.isHome?'HOME':'AWAY') + '</div></div>'
     + '</div>'
-    + vsHtml;
+    + h2hHtml;
 }
 
 // ── TABS ───────────────────────────────────────────────────────────────────

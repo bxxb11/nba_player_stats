@@ -125,7 +125,8 @@ def find_player(name: str):
 def parse_game_log(gl_df):
     """Parse a PlayerGameLog DataFrame into standardized game dicts (newest-first).
     Returns list of dicts with date, opp, home, b2b, wl, min, pts, 3pm, fg3a,
-    reb, oreb, dreb, ast, stl, blk, tov, pm, usg.
+    reb, oreb, dreb, ast, stl, blk, tov, pm, fgm, fga, fg_pct, ftm, fta,
+    ft_pct, fg3_pct, pf, usg.
     """
     games = []
     for _, g in gl_df.iterrows():
@@ -162,6 +163,14 @@ def parse_game_log(gl_df):
             "blk":   safe_int(g.get("BLK")),
             "tov":   safe_int(g.get("TOV")),
             "pm":    safe_int(g.get("PLUS_MINUS")),
+            "fgm":   safe_int(g.get("FGM")),
+            "fga":   safe_int(g.get("FGA")),
+            "fg_pct": safe_float(g.get("FG_PCT"), 3),
+            "ftm":   safe_int(g.get("FTM")),
+            "fta":   safe_int(g.get("FTA")),
+            "ft_pct": safe_float(g.get("FT_PCT"), 3),
+            "fg3_pct": safe_float(g.get("FG3_PCT"), 3),
+            "pf":    safe_int(g.get("PF")),
             "usg":   0,
         })
 
@@ -195,12 +204,21 @@ def generate_viable_legs(player_name, games, window):
         return []
 
     stat_configs = [
-        {"key": "pts",  "label": "PTS",  "min_avg": 1.0},
-        {"key": "reb",  "label": "REB",  "min_avg": 1.0},
-        {"key": "ast",  "label": "AST",  "min_avg": 1.0},
-        {"key": "3pm",  "label": "3PM",  "min_avg": 0.5},
-        {"key": "stl",  "label": "STL",  "min_avg": 0.5},
-        {"key": "blk",  "label": "BLK",  "min_avg": 0.5},
+        {"key": "pts",    "label": "PTS",     "min_avg": 1.0},
+        {"key": "reb",    "label": "REB",     "min_avg": 1.0},
+        {"key": "ast",    "label": "AST",     "min_avg": 1.0},
+        {"key": "3pm",    "label": "3PM",     "min_avg": 0.5},
+        {"key": "stl",    "label": "STL",     "min_avg": 0.5},
+        {"key": "blk",    "label": "BLK",     "min_avg": 0.5},
+        {"key": "fgm",    "label": "FGM",     "min_avg": 1.0},
+        {"key": "ftm",    "label": "FTM",     "min_avg": 0.5},
+        {"key": "fta",    "label": "FTA",     "min_avg": 0.5},
+        {"key": "pf",     "label": "PF",      "min_avg": 1.0},
+        {"key": "pra",    "label": "PRA",     "min_avg": 5.0, "combo": ["pts", "reb", "ast"]},
+        {"key": "pr",     "label": "PR",      "min_avg": 3.0, "combo": ["pts", "reb"]},
+        {"key": "pa",     "label": "PA",      "min_avg": 3.0, "combo": ["pts", "ast"]},
+        {"key": "ra",     "label": "RA",      "min_avg": 2.0, "combo": ["reb", "ast"]},
+        {"key": "stocks", "label": "STL+BLK", "min_avg": 0.5, "combo": ["stl", "blk"]},
     ]
 
     slice_games = games[:window] if len(games) >= window else games
@@ -211,7 +229,11 @@ def generate_viable_legs(player_name, games, window):
     legs = []
     for sc in stat_configs:
         k = sc["key"]
-        vals = [g.get(k, 0) or 0 for g in slice_games]
+        combo = sc.get("combo")
+        if combo:
+            vals = [sum((g.get(c, 0) or 0) for c in combo) for g in slice_games]
+        else:
+            vals = [g.get(k, 0) or 0 for g in slice_games]
         avg_val = sum(vals) / n if n > 0 else 0
 
         if avg_val < sc["min_avg"]:
@@ -388,6 +410,16 @@ def get_opp_def_stats(opp_abbr: str):
         league_avg_reb    = safe_float(df_opp["OPP_REB"].mean(), 1)
         league_avg_ast    = safe_float(df_opp["OPP_AST"].mean(), 1)
         league_avg_threes = safe_float(df_opp["OPP_FG3M"].mean(), 1)
+        league_avg_tov    = safe_float(df_opp["OPP_TOV"].mean(), 1)
+        league_avg_stl    = safe_float(df_opp["OPP_STL"].mean(), 1)
+        league_avg_blk    = safe_float(df_opp["OPP_BLK"].mean(), 1)
+        league_avg_ftm    = safe_float(df_opp["OPP_FTM"].mean(), 1)
+        league_avg_fta    = safe_float(df_opp["OPP_FTA"].mean(), 1)
+        league_avg_oreb   = safe_float(df_opp["OPP_OREB"].mean(), 1)
+        league_avg_dreb   = safe_float(df_opp["OPP_DREB"].mean(), 1)
+        league_avg_pf     = safe_float(df_opp["OPP_PF"].mean(), 1)
+        league_avg_fgm    = safe_float(df_opp["OPP_FGM"].mean(), 1)
+        league_avg_fga    = safe_float(df_opp["OPP_FGA"].mean(), 1)
 
         # Call 2 — Advanced measure: DEF_RATING + PACE
         time.sleep(0.4)
@@ -409,12 +441,32 @@ def get_opp_def_stats(opp_abbr: str):
             "rebAllowed":      safe_float(r.get("OPP_REB")),
             "astAllowed":      safe_float(r.get("OPP_AST")),
             "threesAllowed":   safe_float(r.get("OPP_FG3M")),
+            "tovForced":       safe_float(r.get("OPP_TOV")),
+            "stlAllowed":      safe_float(r.get("OPP_STL")),
+            "blkAllowed":      safe_float(r.get("OPP_BLK")),
+            "ftmAllowed":      safe_float(r.get("OPP_FTM")),
+            "ftaAllowed":      safe_float(r.get("OPP_FTA")),
+            "fgmAllowed":      safe_float(r.get("OPP_FGM")),
+            "fgaAllowed":      safe_float(r.get("OPP_FGA")),
+            "orebAllowed":     safe_float(r.get("OPP_OREB")),
+            "drebAllowed":     safe_float(r.get("OPP_DREB")),
+            "pfCommitted":     safe_float(r.get("OPP_PF")),
             "defRating":       def_rating,
             "pace":            pace,
             "leagueAvgPts":    league_avg_pts,
             "leagueAvgReb":    league_avg_reb,
             "leagueAvgAst":    league_avg_ast,
             "leagueAvgThrees": league_avg_threes,
+            "leagueAvgTov":    league_avg_tov,
+            "leagueAvgStl":    league_avg_stl,
+            "leagueAvgBlk":    league_avg_blk,
+            "leagueAvgFtm":    league_avg_ftm,
+            "leagueAvgFta":    league_avg_fta,
+            "leagueAvgOreb":   league_avg_oreb,
+            "leagueAvgDreb":   league_avg_dreb,
+            "leagueAvgPf":     league_avg_pf,
+            "leagueAvgFgm":    league_avg_fgm,
+            "leagueAvgFga":    league_avg_fga,
         }
     except Exception:
         return None
@@ -475,22 +527,74 @@ def player_stats():
 
         # 5 · season averages from full game log
         if not gl_df.empty:
+            pts_avg = safe_float(gl_df["PTS"].mean())
+            reb_avg = safe_float(gl_df["REB"].mean())
+            ast_avg = safe_float(gl_df["AST"].mean())
+            stl_avg = safe_float(gl_df["STL"].mean())
+            blk_avg = safe_float(gl_df["BLK"].mean())
             season_avg = {
-                "pts": safe_float(gl_df["PTS"].mean()),
+                "pts": pts_avg,
                 "3pm": safe_float(gl_df["FG3M"].mean()),
-                "reb": safe_float(gl_df["REB"].mean()),
-                "ast": safe_float(gl_df["AST"].mean()),
-                "stl": safe_float(gl_df["STL"].mean()),
-                "blk": safe_float(gl_df["BLK"].mean()),
+                "reb": reb_avg,
+                "ast": ast_avg,
+                "stl": stl_avg,
+                "blk": blk_avg,
                 "min": safe_float(gl_df["MIN"].apply(parse_min).mean()),
                 "tov": safe_float(gl_df["TOV"].mean()),
+                # Tier 1: new basic stats
+                "fgm": safe_float(gl_df["FGM"].mean()),
+                "fga": safe_float(gl_df["FGA"].mean()),
+                "fg_pct": safe_float(gl_df["FG_PCT"].mean(), 3),
+                "ftm": safe_float(gl_df["FTM"].mean()),
+                "fta": safe_float(gl_df["FTA"].mean()),
+                "ft_pct": safe_float(gl_df["FT_PCT"].mean(), 3),
+                "fg3_pct": safe_float(gl_df["FG3_PCT"].mean(), 3),
+                "pf": safe_float(gl_df["PF"].mean()),
+                # Tier 1: combo stats
+                "pra": safe_float(pts_avg + reb_avg + ast_avg),
+                "pr":  safe_float(pts_avg + reb_avg),
+                "pa":  safe_float(pts_avg + ast_avg),
+                "ra":  safe_float(reb_avg + ast_avg),
+                "stocks": safe_float(stl_avg + blk_avg),
+                # DD2/TD3 (count from game log)
+                "dd2": 0,
+                "td3": 0,
                 # advanced fields filled below
                 "usg": 0.0,
                 "ts_pct": 0.0,
                 "net_rating": 0.0,
+                "efg_pct": 0.0,
+                "ast_pct": 0.0,
+                "ast_tov": 0.0,
+                "ast_ratio": 0.0,
+                "oreb_pct": 0.0,
+                "dreb_pct": 0.0,
+                "reb_pct": 0.0,
+                "tov_pct": 0.0,
+                "pie": 0.0,
+                "pace_player": 0.0,
             }
+            # Compute DD2/TD3 from game log
+            dd2_count = 0
+            td3_count = 0
+            for _, g in gl_df.iterrows():
+                cats = sum(1 for v in [safe_int(g.get("PTS")), safe_int(g.get("REB")),
+                                       safe_int(g.get("AST")), safe_int(g.get("STL")),
+                                       safe_int(g.get("BLK"))] if v >= 10)
+                if cats >= 2:
+                    dd2_count += 1
+                if cats >= 3:
+                    td3_count += 1
+            season_avg["dd2"] = dd2_count
+            season_avg["td3"] = td3_count
         else:
-            season_avg = {k: 0 for k in ["pts","3pm","reb","ast","stl","blk","min","tov","usg","ts_pct","net_rating"]}
+            season_avg = {k: 0 for k in [
+                "pts","3pm","reb","ast","stl","blk","min","tov",
+                "fgm","fga","fg_pct","ftm","fta","ft_pct","fg3_pct","pf",
+                "pra","pr","pa","ra","stocks","dd2","td3",
+                "usg","ts_pct","net_rating","efg_pct",
+                "ast_pct","ast_tov","ast_ratio","oreb_pct","dreb_pct","reb_pct","tov_pct","pie","pace_player",
+            ]}
 
         # 6 · advanced season stats (USG%, TS%, NET_RATING)
         try:
@@ -506,12 +610,25 @@ def player_stats():
             adv_row = adv_df[adv_df["PLAYER_ID"] == int(player_id)]
             if not adv_row.empty:
                 ar = adv_row.iloc[0]
-                usg_raw = float(ar.get("USG_PCT") or 0)
-                ts_raw  = float(ar.get("TS_PCT")  or 0)
+                def pct100(val):
+                    """Convert decimal (0.28) to percent (28.0)."""
+                    v = float(val or 0)
+                    return round(v * 100 if v < 1.0 else v, 1)
                 # nba_api returns these as decimals (0.28), convert to percent
-                season_avg["usg"]        = round(usg_raw * 100 if usg_raw < 1.0 else usg_raw, 1)
-                season_avg["ts_pct"]     = round(ts_raw  * 100 if ts_raw  < 1.0 else ts_raw,  1)
+                season_avg["usg"]        = pct100(ar.get("USG_PCT"))
+                season_avg["ts_pct"]     = pct100(ar.get("TS_PCT"))
                 season_avg["net_rating"] = safe_float(ar.get("NET_RATING"))
+                # Tier 2: additional advanced stats
+                season_avg["efg_pct"]    = pct100(ar.get("EFG_PCT"))
+                season_avg["ast_pct"]    = pct100(ar.get("AST_PCT"))
+                season_avg["ast_tov"]    = safe_float(ar.get("AST_TOV"), 2)
+                season_avg["ast_ratio"]  = safe_float(ar.get("AST_RATIO"))
+                season_avg["oreb_pct"]   = pct100(ar.get("OREB_PCT"))
+                season_avg["dreb_pct"]   = pct100(ar.get("DREB_PCT"))
+                season_avg["reb_pct"]    = pct100(ar.get("REB_PCT"))
+                season_avg["tov_pct"]    = pct100(ar.get("TOV_PCT"))
+                season_avg["pie"]        = pct100(ar.get("PIE"))
+                season_avg["pace_player"] = safe_float(ar.get("PACE"))
         except Exception:
             pass
 
