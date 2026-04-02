@@ -1,46 +1,53 @@
 # NBA Props Lab
 
-A local web app for NBA player prop betting research. Pulls live stats directly from the NBA API and surfaces per-game breakdowns, prop hit rates, matchup defense data, team rankings, and at-a-glance intel chips — all in a dark-mode, PC-friendly single-page interface.
+A local web app for NBA player prop betting research. Pulls live stats directly from the NBA API and surfaces per-game breakdowns, prop hit rates, matchup defense data, team rankings, a full game schedule, and a parlay builder — all in a dark-mode single-page interface.
 
 ---
 
 ## Features
 
-### ⚡ Parlay Lab *(new)*
-A dedicated multi-leg parlay calculator and auto-recommendation engine.
+### 📅 Game Schedule
+- Full 2025-26 season calendar (regular season + playoffs)
+- Browse any date with **← PREV / NEXT →** navigation and a **TODAY** shortcut
+- Game cards show: `AWAY @ HOME`, team records, tip-off time, arena
+- Live games pulse red; completed games show the final score (winner highlighted)
+- Single API call for the entire season — cached 2 hours server-side
+
+### ⚡ Parlay Lab
+
+**Today's Games Picker**
+- Opens directly to today's schedule — no manual team selection needed
+- Tap any game pill (`PHX @ CHA  7:00 pm ET`) to instantly kick off the analysis
+- Changing the L5 / L10 / L20 window re-runs for the selected game automatically
+
+**Matchup Auto-Recommendations**
+- Backend fetches top 5 players per team in parallel and generates the best 2-leg → 5-leg combinations ranked by empirical hit rate
+- Stats evaluated: **PTS · REB · AST · 3PM · STL · BLK**
+- Shows same-team combos for each side + cross-team combos (naive independence)
+- One-click **Add to Builder** copies any recommendation into the manual builder
+- Results cached in-session
 
 **Manual Parlay Builder**
-- Add any player to a parlay (cache-first — instant if already searched)
-- Pick stat (PTS / REB / AST / 3PM / STL / BLK) and set a line
-- Hit rates for each leg update instantly: L5 · L10 · L20 · Season
+- Add any player (cache-first — instant if already searched)
+- Pick stat and line; hit rates update instantly: L5 · L10 · L20 · Season
 - **CALCULATE PARLAY** computes joint probability client-side:
   - **Same-team legs**: empirical co-occurrence — counts actual games where *all* conditions hit simultaneously
   - **Cross-team legs**: naive independence (product of individual rates)
-  - **Correlation ratio** (empirical ÷ naive) — values > 1× mean legs are positively correlated and books are likely underpricing the parlay
-
-**Matchup Auto-Recommendations**
-- Pick a game (home team + away team) and a window (L5 / L10 / L20)
-- Backend fetches top 5 players per team and auto-generates the best 2-leg → 5-leg combinations ranked by empirical hit rate
-- Shows same-team combos for each side + cross-team combos
-- One-click **Add to Builder** copies any recommendation into the manual builder
+  - **Correlation ratio** (empirical ÷ naive) — values > 1× mean legs are positively correlated
 
 ### Player Analysis
 - **Player search** — find any active NBA player by name
 - **OVERVIEW** — L5 / L10 / season trend table + minutes load bars (last 10 games)
-- **PROPS** — set a prop line for any stat and instantly see SEASON / L10 / L5 hit rates with streak dots; splits by home/away/B2B/rest
-- **LOG** — full game log with W/L, MIN, PTS, 3PM, 3PA, REB, AST, TOV, STL, BLK, +/- (last 30 games)
+- **PROPS** — set a prop line and instantly see SEASON / L10 / L5 hit rates with streak dots; home/away/B2B/rest splits
+- **LOG** — full game log: W/L, MIN, PTS, 3PM, 3PA, REB, AST, TOV, STL, BLK, +/- (last 30 games)
 - **MATCHUP** — opponent defensive stats (pts/reb/ast/3PM allowed, DEF rating, pace) vs league average + head-to-head history
 - **INTEL strip** — auto-generated insight chips: FORM · LOAD · 3PT FORM · MATCHUP · CONSISTENCY · B2B RISK · USAGE
 
 ### League View
 - **TEAMS tab** — all 30 teams ranked across key metrics with sortable columns
   - OFF / DEF / NET ratings, PACE, PTS scored, OPP PTS allowed, 3PM, 3PA, AST
-  - Color-coded: top 8 green, bottom 8 red; fast pace cyan (>100), slow pace orange (<97)
-  - Pace explainer card; lazy-loads on first click, cached for the session
-
-### General
-- **PC-friendly layout** — parlay page 1100px wide with 2-column grid; analysis page 800px on desktop
-- **localStorage cache** — 2-hour TTL prevents redundant API calls; auto-downloads fetched data as JSON
+  - Color-coded: top 8 green, bottom 8 red; fast pace cyan (>100), slow orange (<97)
+  - Lazy-loads on first click, cached for the session
 
 ---
 
@@ -93,7 +100,36 @@ The green pill in the top-right corner confirms the API is reachable.
 | `GET /api/health` | Server health check |
 | `GET /api/player?name=<name>` | Full player stats, season averages, game log, matchup defense |
 | `GET /api/teams` | All 30 teams — ratings, pace, per-game offense & defense stats |
+| `GET /api/schedule` | Full season schedule grouped by date (cached 2 hrs) |
+| `GET /api/schedule?date=YYYY-MM-DD` | Games for a specific date |
 | `GET /api/matchup-parlays?home=LAL&away=BOS&window=10` | Auto-recommended multi-leg parlays for a matchup |
+
+### `/api/schedule` response shape
+
+```json
+{
+  "date": "2026-04-02",
+  "count": 6,
+  "games": [
+    {
+      "gameId": "0022501234",
+      "date": "2026-04-02",
+      "statusText": "7:00 pm ET",
+      "status": 1,
+      "tipEt": "00:00",
+      "arenaName": "Spectrum Center",
+      "arenaCity": "Charlotte",
+      "arenaState": "NC",
+      "homeTricode": "CHA", "homeName": "Hornets", "homeCity": "Charlotte",
+      "homeWins": 18, "homeLosses": 55, "homeScore": null,
+      "awayTricode": "PHX", "awayName": "Suns", "awayCity": "Phoenix",
+      "awayWins": 31, "awayLosses": 42, "awayScore": null
+    }
+  ]
+}
+```
+
+`status`: `1` = scheduled · `2` = live · `3` = final
 
 ### `/api/matchup-parlays` parameters
 
@@ -102,8 +138,6 @@ The green pill in the top-right corner confirms the API is reachable.
 | `home` | 3-letter team abbreviation (e.g. `LAL`) | required |
 | `away` | 3-letter team abbreviation (e.g. `BOS`) | required |
 | `window` | `5`, `10`, or `20` | `10` |
-
-Response time: ~40–80 seconds (fetches game logs for ~10 players with rate-limit delays).
 
 ### `/api/matchup-parlays` response shape
 
@@ -128,12 +162,10 @@ Response time: ~40–80 seconds (fetches game logs for ~10 players with rate-lim
         "sample_size": 10
       }
     ],
-    "3": [...],
-    "4": [...],
-    "5": [...]
+    "3": [...], "4": [...], "5": [...]
   },
-  "away_combos": { ... },
-  "cross_team_combos": { ... },
+  "away_combos": { "2": [...], "3": [...], "4": [...], "5": [...] },
+  "cross_team_combos": { "2": [...], "3": [...], "4": [...], "5": [...] },
   "warnings": []
 }
 ```
@@ -182,12 +214,11 @@ Response time: ~40–80 seconds (fetches game logs for ~10 players with rate-lim
 | Opp advanced | `LeagueDashTeamStats(Advanced)` | DEF_RATING, PACE |
 | Team base stats | `LeagueDashTeamStats(Base)` | PTS, REB, AST, FG3M, FG3A, W/L |
 | Parlay roster | `LeagueDashPlayerStats(Base)` | top players by MIN per team |
+| Full schedule | `ScheduleLeagueV2` | all games, dates, arenas, scores |
 
 ---
 
 ## Correlation Ratio — the edge
-
-The parlay calculator exposes a metric books don't advertise:
 
 ```
 correlation_ratio = empirical_joint_rate / naive_independent_rate
@@ -195,11 +226,11 @@ correlation_ratio = empirical_joint_rate / naive_independent_rate
 
 | Ratio | Meaning |
 |---|---|
-| > 1.05 | Legs are **positively correlated** — books underprice this parlay |
+| > 1.05 | Legs are **positively correlated** — books may underprice this parlay |
 | ≈ 1.00 | Approximately independent — no edge either way |
 | < 0.95 | Legs are **negatively correlated** — avoid |
 
-Same-team legs (e.g. two Lakers players) share the same games, so co-occurrence is measured directly. High-scoring, high-pace, blowout, or rest games inflate *all* counting stats together — that's the correlation source.
+Same-team legs share the same games, so co-occurrence is measured directly. High-scoring, high-pace, blowout, or rest games inflate all counting stats together — that's the correlation source.
 
 ---
 
@@ -215,10 +246,10 @@ Same-team legs (e.g. two Lakers players) share the same games, so co-occurrence 
 
 ---
 
-## Notes
+## Performance Notes
 
-- A fresh player fetch takes ~15–25 seconds (NBA API rate-limits requests; server adds sleep delays between calls).
-- The Parlay Lab matchup recommendations take ~40–80 seconds (10 player game logs). Results are cached in-session.
-- The TEAMS tab takes ~15 seconds on first load (3 API calls); result is cached for the session.
-- `ScoreboardV2` has a known deprecation warning for 2025-26; next-game detection still works correctly.
-- Season is hardcoded to `2025-26` in `server.py` — update `SEASON` at the top of the file each year.
+- Player fetch: ~15–25 seconds (NBA API rate-limits; server adds delays between calls)
+- Parlay matchup analysis: ~20–40 seconds (10 player game logs fetched in parallel across both teams); cached in-session
+- Schedule: instant after first load (full season fetched once, cached 2 hours server-side)
+- Teams tab: ~15 seconds on first load (3 API calls); cached for the session
+- Season is hardcoded to `2025-26` in `server.py` — update `SEASON` at the top each year
