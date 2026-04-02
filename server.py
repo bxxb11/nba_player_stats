@@ -5,10 +5,12 @@ Run: python server.py
 """
 
 import datetime
+import heapq
 import itertools
 import math
 import time
 import traceback
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -204,21 +206,12 @@ def generate_viable_legs(player_name, games, window):
         return []
 
     stat_configs = [
-        {"key": "pts",    "label": "PTS",     "min_avg": 1.0},
-        {"key": "reb",    "label": "REB",     "min_avg": 1.0},
-        {"key": "ast",    "label": "AST",     "min_avg": 1.0},
-        {"key": "3pm",    "label": "3PM",     "min_avg": 0.5},
-        {"key": "stl",    "label": "STL",     "min_avg": 0.5},
-        {"key": "blk",    "label": "BLK",     "min_avg": 0.5},
-        {"key": "fgm",    "label": "FGM",     "min_avg": 1.0},
-        {"key": "ftm",    "label": "FTM",     "min_avg": 0.5},
-        {"key": "fta",    "label": "FTA",     "min_avg": 0.5},
-        {"key": "pf",     "label": "PF",      "min_avg": 1.0},
-        {"key": "pra",    "label": "PRA",     "min_avg": 5.0, "combo": ["pts", "reb", "ast"]},
-        {"key": "pr",     "label": "PR",      "min_avg": 3.0, "combo": ["pts", "reb"]},
-        {"key": "pa",     "label": "PA",      "min_avg": 3.0, "combo": ["pts", "ast"]},
-        {"key": "ra",     "label": "RA",      "min_avg": 2.0, "combo": ["reb", "ast"]},
-        {"key": "stocks", "label": "STL+BLK", "min_avg": 0.5, "combo": ["stl", "blk"]},
+        {"key": "pts", "label": "PTS", "min_avg": 1.0},
+        {"key": "reb", "label": "REB", "min_avg": 1.0},
+        {"key": "ast", "label": "AST", "min_avg": 1.0},
+        {"key": "3pm", "label": "3PM", "min_avg": 0.5},
+        {"key": "stl", "label": "STL", "min_avg": 0.5},
+        {"key": "blk", "label": "BLK", "min_avg": 0.5},
     ]
 
     slice_games = games[:window] if len(games) >= window else games
@@ -290,10 +283,10 @@ def compute_combos(all_legs, games_by_player, window, top_n=3):
     max_legs = min(5, len(all_legs))
 
     for leg_count in range(2, max_legs + 1):
-        combos = list(itertools.combinations(range(len(all_legs)), leg_count))
-        scored = []
+        heap = []   # min-heap of (empirical_rate, tiebreak, combo_dict)
+        tiebreak = 0
 
-        for combo_indices in combos:
+        for combo_indices in itertools.combinations(range(len(all_legs)), leg_count):
             combo_legs = [all_legs[i] for i in combo_indices]
 
             # Compute naive probability (product of individual rates within shared dates)
@@ -326,18 +319,21 @@ def compute_combos(all_legs, games_by_player, window, top_n=3):
             # Correlation ratio
             corr_ratio = (empirical_rate / naive_rate) if naive_rate > 0 else 1.0
 
-            scored.append({
+            combo_dict = {
                 "legs":              combo_legs,
                 "empirical_rate":    round(empirical_rate, 3),
                 "naive_rate":        round(naive_rate, 3),
                 "correlation_ratio": round(corr_ratio, 3),
                 "hits":              empirical_hits,
                 "sample_size":       n_shared,
-            })
+            }
+            if len(heap) < top_n:
+                heapq.heappush(heap, (empirical_rate, tiebreak, combo_dict))
+            elif empirical_rate > heap[0][0]:
+                heapq.heapreplace(heap, (empirical_rate, tiebreak, combo_dict))
+            tiebreak += 1
 
-        # Sort by empirical rate descending, take top_n
-        scored.sort(key=lambda x: x["empirical_rate"], reverse=True)
-        results[str(leg_count)] = scored[:top_n]
+        results[str(leg_count)] = [item[2] for item in sorted(heap, key=lambda x: -x[0])]
 
     return results
 
@@ -776,8 +772,8 @@ def matchup_parlays():
             season_type_all_star=SEASON_TYPE,
             measure_type_detailed_defense="Base",
             per_mode_detailed="PerGame",
-            timeout=30,
-        ))
+            timeout=25,
+        ), retries=2, base_delay=1.0)
         all_players_df = base_ep.league_dash_player_stats.get_data_frame()
 
         home_id = int(home_info["id"])
@@ -795,45 +791,56 @@ def matchup_parlays():
         if away_players_df.empty:
             return jsonify({"error": f"No player data found for {away_abbr}"}), 404
 
-        # ── Step 2: Fetch game logs for each player ──
-        def fetch_team_game_logs(players_df, team_abbr):
-            """Fetch game logs for players in a DataFrame. Returns {name: games}."""
+        # ── Step 2: Fetch game logs for each player (parallel across both teams) ──
+        def fetch_one_player(row, team_abbr):
+            """Fetch game log for a single player. Returns (name, games, meta_dict, warn_msg)."""
+            pid   = int(row["PLAYER_ID"])
+            pname = str(row["PLAYER_NAME"])
+            p_avg = {
+                "pts": safe_float(row.get("PTS")),
+                "reb": safe_float(row.get("REB")),
+                "ast": safe_float(row.get("AST")),
+                "3pm": safe_float(row.get("FG3M")),
+                "stl": safe_float(row.get("STL")),
+                "blk": safe_float(row.get("BLK")),
+                "min": safe_float(row.get("MIN")),
+            }
+            try:
+                gl_ep = nba_call(lambda p=pid: PlayerGameLog(
+                    player_id=p,
+                    season=SEASON,
+                    season_type_all_star=SEASON_TYPE,
+                    timeout=15,
+                ), retries=2, base_delay=1.0)
+                gl_df = gl_ep.player_game_log.get_data_frame()
+                games = parse_game_log(gl_df)
+                if len(games) >= 5:
+                    return pname, games, {"name": pname, "team": team_abbr, "avg": p_avg, "gamesPlayed": len(games)}, None
+                else:
+                    return pname, None, None, f"{pname}: only {len(games)} games — skipped"
+            except Exception as ex:
+                return pname, None, None, f"Failed to fetch {pname}: {str(ex)}"
+
+        def fetch_team_game_logs_parallel(players_df, team_abbr):
             player_games = {}
             player_meta  = []
-            for _, row in players_df.iterrows():
-                pid   = int(row["PLAYER_ID"])
-                pname = str(row["PLAYER_NAME"])
-                p_avg = {
-                    "pts": safe_float(row.get("PTS")),
-                    "reb": safe_float(row.get("REB")),
-                    "ast": safe_float(row.get("AST")),
-                    "3pm": safe_float(row.get("FG3M")),
-                    "stl": safe_float(row.get("STL")),
-                    "blk": safe_float(row.get("BLK")),
-                    "min": safe_float(row.get("MIN")),
-                }
-                try:
-                    time.sleep(0.6)
-                    gl_ep = nba_call(lambda p=pid: PlayerGameLog(
-                        player_id=p,
-                        season=SEASON,
-                        season_type_all_star=SEASON_TYPE,
-                        timeout=20,
-                    ))
-                    gl_df = gl_ep.player_game_log.get_data_frame()
-                    games = parse_game_log(gl_df)
-                    # Only include players with enough games
-                    if len(games) >= 5:
+            rows = list(players_df.iterrows())
+            with ThreadPoolExecutor(max_workers=5) as pool:
+                futures = {pool.submit(fetch_one_player, row, team_abbr): row for _, row in rows}
+                for future in as_completed(futures):
+                    pname, games, meta, warn = future.result()
+                    if warn:
+                        warnings.append(warn)
+                    elif games is not None:
                         player_games[pname] = games
-                        player_meta.append({"name": pname, "team": team_abbr, "avg": p_avg, "gamesPlayed": len(games)})
-                    else:
-                        warnings.append(f"{pname}: only {len(games)} games — skipped")
-                except Exception as ex:
-                    warnings.append(f"Failed to fetch {pname}: {str(ex)}")
+                        player_meta.append(meta)
             return player_games, player_meta
 
-        home_games, home_meta = fetch_team_game_logs(home_players_df, home_abbr)
-        away_games, away_meta = fetch_team_game_logs(away_players_df, away_abbr)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            home_future = pool.submit(fetch_team_game_logs_parallel, home_players_df, home_abbr)
+            away_future = pool.submit(fetch_team_game_logs_parallel, away_players_df, away_abbr)
+            home_games, home_meta = home_future.result()
+            away_games, away_meta = away_future.result()
 
         # ── Step 3: Generate viable legs per team ──
         home_all_legs = []

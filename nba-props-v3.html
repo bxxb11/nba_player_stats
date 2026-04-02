@@ -1968,7 +1968,7 @@ async function loadMatchupParlays(home, away, window) {
   try {
     if (!serverOnline) throw new Error('Server offline — start python server.py');
     var url = API_BASE+'/api/matchup-parlays?home='+home+'&away='+away+'&window='+window;
-    var r = await fetch(url, { signal: AbortSignal.timeout(180000) });
+    var r = await fetch(url, { signal: AbortSignal.timeout(300000) });
     if (!r.ok) { var b = await r.json().catch(function(){return{};}); throw new Error(b.error || 'HTTP '+r.status); }
     var data = await r.json();
     parlayRecsCache[cacheKey] = data;
