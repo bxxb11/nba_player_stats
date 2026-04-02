@@ -932,6 +932,87 @@ def matchup_parlays():
         return jsonify({"error": str(e), "detail": traceback.format_exc()}), 500
 
 
+_schedule_cache = {"data": None, "ts": 0}
+_SCHEDULE_TTL = 7200  # 2 hours
+
+
+@app.route("/api/schedule")
+def schedule():
+    """Return NBA schedule grouped by date (or filtered by ?date=YYYY-MM-DD).
+    Uses ScheduleLeagueV2 for the full season in one call; cached 2 hours.
+    """
+    import pandas as pd
+
+    global _schedule_cache
+    now = time.time()
+
+    # Refresh cache if stale
+    if _schedule_cache["data"] is None or now - _schedule_cache["ts"] > _SCHEDULE_TTL:
+        try:
+            from nba_api.stats.endpoints import ScheduleLeagueV2
+            ep = nba_call(lambda: ScheduleLeagueV2(season=SEASON, timeout=30),
+                          retries=2, base_delay=1.0)
+            df = ep.get_data_frames()[0]
+            df["parsedDate"] = pd.to_datetime(df["gameDate"]).dt.strftime("%Y-%m-%d")
+            _schedule_cache["data"] = df
+            _schedule_cache["ts"] = now
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    df = _schedule_cache["data"]
+
+    # Optional date filter
+    date_filter = request.args.get("date", "").strip()
+    if date_filter:
+        df = df[df["parsedDate"] == date_filter]
+
+    games = []
+    for _, row in df.iterrows():
+        status = int(row.get("gameStatus", 1))
+        home_score = safe_int(row.get("homeTeam_score")) if status >= 2 else None
+        away_score = safe_int(row.get("awayTeam_score")) if status >= 2 else None
+        # Parse tip-off time (ISO string like 1900-01-01T00:00:00Z → strip date part)
+        raw_time = str(row.get("gameTimeEst", ""))
+        tip_et = ""
+        if "T" in raw_time:
+            tip_et = raw_time.split("T")[1][:5]  # "HH:MM"
+
+        games.append({
+            "gameId":        str(row.get("gameId", "")),
+            "date":          row["parsedDate"],
+            "statusText":    str(row.get("gameStatusText", "")),
+            "status":        status,          # 1=scheduled, 2=live, 3=final
+            "tipEt":         tip_et,
+            "arenaName":     str(row.get("arenaName", "")),
+            "arenaCity":     str(row.get("arenaCity", "")),
+            "arenaState":    str(row.get("arenaState", "")),
+            "homeTricode":   str(row.get("homeTeam_teamTricode", "")),
+            "homeName":      str(row.get("homeTeam_teamName", "")),
+            "homeCity":      str(row.get("homeTeam_teamCity", "")),
+            "homeWins":      safe_int(row.get("homeTeam_wins")),
+            "homeLosses":    safe_int(row.get("homeTeam_losses")),
+            "homeScore":     home_score,
+            "awayTricode":   str(row.get("awayTeam_teamTricode", "")),
+            "awayName":      str(row.get("awayTeam_teamName", "")),
+            "awayCity":      str(row.get("awayTeam_teamCity", "")),
+            "awayWins":      safe_int(row.get("awayTeam_wins")),
+            "awayLosses":    safe_int(row.get("awayTeam_losses")),
+            "awayScore":     away_score,
+        })
+
+    # Sort by date then tip time
+    games.sort(key=lambda g: (g["date"], g["tipEt"]))
+
+    if date_filter:
+        return jsonify({"date": date_filter, "games": games, "count": len(games)})
+
+    # Group by date
+    by_date = {}
+    for g in games:
+        by_date.setdefault(g["date"], []).append(g)
+    return jsonify({"season": SEASON, "dates": by_date, "totalGames": len(games)})
+
+
 if __name__ == "__main__":
     print("NBA Props Lab API  →  http://localhost:5000")
     app.run(host="0.0.0.0", port=5000, debug=False)

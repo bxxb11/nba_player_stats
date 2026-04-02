@@ -258,6 +258,46 @@ header{
 .parlay-lab-btn{width:100%;background:transparent;border:1.5px solid var(--cyan);color:var(--cyan);font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:3px;padding:12px;border-radius:8px;cursor:pointer;transition:all .15s;margin-bottom:24px;}
 .parlay-lab-btn:hover{background:rgba(0,229,255,.07);}
 
+/* ── SCHEDULE BUTTON (search page) ── */
+.schedule-btn{width:100%;background:transparent;border:1.5px solid rgba(0,229,255,.4);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:3px;padding:12px;border-radius:8px;cursor:pointer;transition:all .15s;margin-bottom:12px;}
+.schedule-btn:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(0,229,255,.05);}
+
+/* ── SCHEDULE PAGE ── */
+.sched-wrap{max-width:900px;margin:0 auto;padding:24px 16px 60px;}
+.sched-hdr{text-align:center;padding:20px 0 18px;}
+.sched-title{font-family:'Bebas Neue',sans-serif;font-size:40px;letter-spacing:6px;color:var(--cyan);text-shadow:0 0 30px rgba(0,229,255,.2);}
+.sched-sub{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--muted);margin-top:4px;}
+.sched-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:20px;}
+.sched-nav-btn{background:var(--bg2);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:8px 16px;border-radius:6px;cursor:pointer;transition:all .15s;}
+.sched-nav-btn:hover{border-color:var(--cyan);color:var(--cyan);}
+.sched-date-label{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;color:var(--text);min-width:200px;text-align:center;}
+.sched-today-btn{background:transparent;border:1px solid rgba(0,229,255,.3);color:var(--cyan);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;padding:5px 10px;border-radius:4px;cursor:pointer;transition:all .15s;}
+.sched-today-btn:hover{background:rgba(0,229,255,.07);}
+.sched-games{display:flex;flex-direction:column;gap:12px;}
+.sched-game{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px 18px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;transition:border-color .15s;}
+.sched-game:hover{border-color:rgba(0,229,255,.3);}
+.sched-game.live{border-color:rgba(255,80,80,.4);box-shadow:0 0 12px rgba(255,80,80,.08);}
+.sched-game.final{opacity:.8;}
+.sched-team{display:flex;flex-direction:column;gap:3px;}
+.sched-team.away{align-items:flex-end;text-align:right;}
+.sched-team.home{align-items:flex-start;}
+.sched-tricode{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:var(--text);}
+.sched-team-name{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;}
+.sched-record{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted2);}
+.sched-middle{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.sched-scores{display:flex;gap:10px;align-items:center;}
+.sched-score{font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--text);}
+.sched-score-sep{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--muted2);}
+.sched-at{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted2);}
+.sched-status{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.5px;padding:3px 8px;border-radius:3px;}
+.sched-status.scheduled{color:var(--muted);background:rgba(255,255,255,.04);}
+.sched-status.live{color:#ff5050;background:rgba(255,80,80,.1);animation:pulse-live 1.5s ease-in-out infinite;}
+.sched-status.final{color:var(--muted2);background:rgba(255,255,255,.04);}
+@keyframes pulse-live{0%,100%{opacity:1}50%{opacity:.5}}
+.sched-arena{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted2);margin-top:2px;text-align:center;}
+.sched-empty{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted2);text-align:center;padding:48px 0;}
+.sched-loading{display:flex;flex-direction:column;align-items:center;gap:12px;padding:48px 0;}
+
 /* ── PARLAY PAGE ── */
 .parlay-wrap{max-width:1100px;margin:0 auto;padding:24px 16px 60px;}
 .parlay-hdr{text-align:center;padding:24px 0 20px;}
@@ -423,6 +463,7 @@ header{
         <div class="ac-dropdown" id="searchAcDrop" style="display:none"></div>
       </div>
       <button class="search-go" id="searchBtn">ANALYZE PLAYER</button>
+      <button class="schedule-btn" id="scheduleBtn">📅 GAME SCHEDULE</button>
       <button class="parlay-lab-btn" id="parlayLabBtn">⚡ PARLAY LAB</button>
       <div class="section-lbl" id="recentLabel" style="display:none">RECENT · CACHED</div>
       <div class="chip-row" id="recentChips"></div>
@@ -575,6 +616,30 @@ header{
     </div>
   </div>
 
+  <!-- SCHEDULE -->
+  <div class="page" id="page-schedule">
+    <div class="sched-wrap">
+      <div class="sched-hdr">
+        <div class="sched-title">GAME SCHEDULE</div>
+        <div class="sched-sub">2025–26 NBA REGULAR SEASON &amp; PLAYOFFS</div>
+      </div>
+      <div class="sched-nav">
+        <button class="sched-nav-btn" id="schedPrevBtn">← PREV</button>
+        <div class="sched-date-label" id="schedDateLabel">—</div>
+        <button class="sched-nav-btn" id="schedNextBtn">NEXT →</button>
+      </div>
+      <div style="text-align:center;margin-bottom:18px;">
+        <button class="sched-today-btn" id="schedTodayBtn">TODAY</button>
+      </div>
+      <div id="schedContent">
+        <div class="sched-loading">
+          <div class="dots"><span></span><span></span><span></span></div>
+          <div class="loading-msg">Loading schedule…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ERROR -->
   <div class="page" id="page-error">
     <div class="error-box" id="errorBox"></div>
@@ -656,7 +721,7 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
   $id('page-' + id).classList.add('active');
   $id('scrollArea').scrollTop = 0;
-  var showBack = (id === 'analysis' || id === 'parlay');
+  var showBack = (id === 'analysis' || id === 'parlay' || id === 'schedule');
   $id('backBtn').className = 'back-btn' + (showBack ? ' show' : '');
 }
 function goSearch() { showPage('search'); }
@@ -2326,6 +2391,127 @@ document.addEventListener('DOMContentLoaded', function() {
     addParlayPlayer(name);
   });
 });
+
+// ── SCHEDULE ────────────────────────────────────────────────────────────────
+var schedCurrentDate = null;       // 'YYYY-MM-DD'
+var schedCache = {};               // keyed by date string
+
+function todayStr() {
+  var d = new Date();
+  return d.getFullYear() + '-'
+    + String(d.getMonth() + 1).padStart(2, '0') + '-'
+    + String(d.getDate()).padStart(2, '0');
+}
+
+function fmtDateLabel(ds) {
+  var d = new Date(ds + 'T12:00:00');  // noon local to avoid DST edge
+  return d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' }).toUpperCase();
+}
+
+function shiftDate(ds, days) {
+  var d = new Date(ds + 'T12:00:00');
+  d.setDate(d.getDate() + days);
+  return d.getFullYear() + '-'
+    + String(d.getMonth() + 1).padStart(2, '0') + '-'
+    + String(d.getDate()).padStart(2, '0');
+}
+
+function initSchedule() {
+  $id('scheduleBtn').addEventListener('click', function() {
+    showPage('schedule');
+    if (!schedCurrentDate) schedCurrentDate = todayStr();
+    loadScheduleDate(schedCurrentDate);
+  });
+  $id('schedPrevBtn').addEventListener('click', function() {
+    schedCurrentDate = shiftDate(schedCurrentDate, -1);
+    loadScheduleDate(schedCurrentDate);
+  });
+  $id('schedNextBtn').addEventListener('click', function() {
+    schedCurrentDate = shiftDate(schedCurrentDate, 1);
+    loadScheduleDate(schedCurrentDate);
+  });
+  $id('schedTodayBtn').addEventListener('click', function() {
+    schedCurrentDate = todayStr();
+    loadScheduleDate(schedCurrentDate);
+  });
+}
+
+async function loadScheduleDate(dateStr) {
+  $id('schedDateLabel').textContent = fmtDateLabel(dateStr);
+
+  // Cache hit
+  if (schedCache[dateStr]) { renderSchedule(schedCache[dateStr]); return; }
+
+  $id('schedContent').innerHTML = '<div class="sched-loading">'
+    + '<div class="dots"><span></span><span></span><span></span></div>'
+    + '<div class="loading-msg">Loading ' + escHtml(dateStr) + '…</div></div>';
+
+  try {
+    if (!serverOnline) throw new Error('Server offline — start python server.py');
+    var r = await fetch(API_BASE + '/api/schedule?date=' + dateStr, { signal: AbortSignal.timeout(30000) });
+    if (!r.ok) { var b = await r.json().catch(function(){return{};}); throw new Error(b.error || 'HTTP ' + r.status); }
+    var data = await r.json();
+    schedCache[dateStr] = data.games || [];
+    renderSchedule(schedCache[dateStr]);
+  } catch(err) {
+    $id('schedContent').innerHTML = '<div class="error-box" style="margin:0;"><b>Failed to load schedule</b><br><br>' + escHtml(err.message) + '</div>';
+  }
+}
+
+function renderSchedule(games) {
+  if (!games.length) {
+    $id('schedContent').innerHTML = '<div class="sched-empty">No games scheduled for this date.</div>';
+    return;
+  }
+  var html = '<div class="sched-games">';
+  games.forEach(function(g) {
+    var isLive  = g.status === 2;
+    var isFinal = g.status === 3;
+    var cls = isLive ? ' live' : isFinal ? ' final' : '';
+    var statusCls = isLive ? 'live' : isFinal ? 'final' : 'scheduled';
+
+    var middleHtml;
+    if (isFinal || isLive) {
+      // Show scores
+      var awayW = g.awayScore != null && g.homeScore != null && g.awayScore > g.homeScore;
+      var homeW = g.awayScore != null && g.homeScore != null && g.homeScore > g.awayScore;
+      middleHtml = '<div class="sched-scores">'
+        + '<span class="sched-score" style="' + (awayW ? 'color:var(--cyan)' : '') + '">' + (g.awayScore != null ? g.awayScore : '—') + '</span>'
+        + '<span class="sched-score-sep">–</span>'
+        + '<span class="sched-score" style="' + (homeW ? 'color:var(--cyan)' : '') + '">' + (g.homeScore != null ? g.homeScore : '—') + '</span>'
+        + '</div>';
+    } else {
+      middleHtml = '<div class="sched-at">@</div>';
+    }
+
+    var arenaStr = g.arenaName + (g.arenaCity ? ', ' + g.arenaCity : '') + (g.arenaState ? ' ' + g.arenaState : '');
+
+    html += '<div class="sched-game' + cls + '">'
+      // Away team (left)
+      + '<div class="sched-team away">'
+      + '<div class="sched-tricode">' + escHtml(g.awayTricode) + '</div>'
+      + '<div class="sched-team-name">' + escHtml(g.awayCity) + ' ' + escHtml(g.awayName) + '</div>'
+      + '<div class="sched-record">' + g.awayWins + '–' + g.awayLosses + '</div>'
+      + '</div>'
+      // Middle
+      + '<div class="sched-middle">'
+      + middleHtml
+      + '<span class="sched-status ' + statusCls + '">' + escHtml(g.statusText) + '</span>'
+      + '<div class="sched-arena">' + escHtml(arenaStr) + '</div>'
+      + '</div>'
+      // Home team (right)
+      + '<div class="sched-team home">'
+      + '<div class="sched-tricode">' + escHtml(g.homeTricode) + '</div>'
+      + '<div class="sched-team-name">' + escHtml(g.homeCity) + ' ' + escHtml(g.homeName) + '</div>'
+      + '<div class="sched-record">' + g.homeWins + '–' + g.homeLosses + '</div>'
+      + '</div>'
+      + '</div>';
+  });
+  html += '</div>';
+  $id('schedContent').innerHTML = html;
+}
+
+document.addEventListener('DOMContentLoaded', function() { initSchedule(); });
 </script>
 </body>
 </html>
