@@ -413,6 +413,19 @@ header{
 .prec-hr-fill{height:100%;border-radius:2px;}
 .prec-no-combos{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted2);padding:8px 0;}
 
+/* ── TODAY'S GAMES PICKER ── */
+.prec-today-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.prec-today-date{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--cyan);}
+.prec-game-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.prec-game-pill{display:flex;flex-direction:column;align-items:center;gap:3px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 14px;cursor:pointer;transition:all .15s;min-width:110px;}
+.prec-game-pill:hover{border-color:rgba(0,229,255,.4);background:rgba(0,229,255,.04);}
+.prec-game-pill.selected{border-color:var(--cyan);background:rgba(0,229,255,.08);box-shadow:0 0 12px rgba(0,229,255,.1);}
+.prec-pill-teams{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--text);}
+.prec-pill-time{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted2);letter-spacing:1px;}
+.prec-no-games{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted2);padding:8px 0;}
+.prec-window-row{display:flex;align-items:center;gap:10px;}
+.prec-window-row .prec-ctrl-lbl{white-space:nowrap;}
+
 /* ── AUTOCOMPLETE ── */
 .ac-wrap{position:relative;width:100%;}
 /* push input text away from the caret button */
@@ -579,35 +592,24 @@ header{
       <!-- MATCHUP RECOMMENDATIONS -->
       <div class="parlay-recs-section">
         <div class="sec-lbl">AUTO-RECOMMENDED MATCHUP PARLAYS</div>
-        <div class="prec-controls">
-          <div class="prec-ctrl-group">
-            <div class="prec-ctrl-lbl">HOME TEAM</div>
-            <select class="prec-team-sel" id="precHomeTeam">
-              <option value="">Select team...</option>
-            </select>
-          </div>
-          <div class="prec-ctrl-group">
-            <div class="prec-ctrl-lbl">AWAY TEAM</div>
-            <select class="prec-team-sel" id="precAwayTeam">
-              <option value="">Select team...</option>
-            </select>
-          </div>
-          <div class="prec-ctrl-group">
-            <div class="prec-ctrl-lbl">WINDOW</div>
-            <div class="prec-window-tog" id="precWindowTog">
-              <span class="pw-btn" data-w="5">L5</span>
-              <span class="pw-btn active" data-w="10">L10</span>
-              <span class="pw-btn" data-w="20">L20</span>
-            </div>
-          </div>
-          <div class="prec-ctrl-group" style="justify-content:flex-end;">
-            <div class="prec-ctrl-lbl">&nbsp;</div>
-            <button class="prec-go-btn" id="precGoBtn" disabled>ANALYZE</button>
+        <div class="prec-today-hdr">
+          <div class="prec-ctrl-lbl">TODAY'S GAMES — TAP TO ANALYZE</div>
+          <div class="prec-today-date" id="precTodayDate"></div>
+        </div>
+        <div class="prec-game-grid" id="precGameGrid">
+          <div class="prec-no-games">Loading today's schedule…</div>
+        </div>
+        <div class="prec-window-row">
+          <div class="prec-ctrl-lbl">WINDOW</div>
+          <div class="prec-window-tog" id="precWindowTog">
+            <span class="pw-btn" data-w="5">L5</span>
+            <span class="pw-btn active" data-w="10">L10</span>
+            <span class="pw-btn" data-w="20">L20</span>
           </div>
         </div>
-        <div id="precContent">
+        <div id="precContent" style="margin-top:16px;">
           <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted2);padding:12px 0;">
-            Select a matchup above to auto-generate the best multi-leg combinations.<br>
+            Tap a game above to auto-generate the best multi-leg combinations.<br>
             Backend fetches ~10 players (~40–80 sec). Results are cached for this session.
           </div>
         </div>
@@ -1641,6 +1643,9 @@ var PARLAY_STAT_OPTS = [
 ];
 
 // ── Init (wired inside DOMContentLoaded below) ─────────────────────
+var precSelectedHome = null;
+var precSelectedAway = null;
+
 function initParlay() {
   // "PARLAY LAB" button on search page
   $id('parlayLabBtn').addEventListener('click', goParlay);
@@ -1657,40 +1662,74 @@ function initParlay() {
   // Calculate button
   $id('parlayCalcBtn').addEventListener('click', calculateParlay);
 
-  // Populate team dropdowns
-  var homeEl = $id('precHomeTeam');
-  var awayEl = $id('precAwayTeam');
-  NBA_TEAMS.forEach(function(abbr) {
-    homeEl.innerHTML += '<option value="'+abbr+'">'+abbr+'</option>';
-    awayEl.innerHTML += '<option value="'+abbr+'">'+abbr+'</option>';
-  });
-  function updateGoBtn() {
-    var ok = $id('precHomeTeam').value && $id('precAwayTeam').value &&
-             $id('precHomeTeam').value !== $id('precAwayTeam').value;
-    $id('precGoBtn').disabled = !ok;
-  }
-  homeEl.addEventListener('change', updateGoBtn);
-  awayEl.addEventListener('change', updateGoBtn);
-
-  // Window toggle
+  // Window toggle — re-run analysis if a game is already selected
   $id('precWindowTog').querySelectorAll('.pw-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       $id('precWindowTog').querySelectorAll('.pw-btn').forEach(function(b) { b.classList.remove('active'); });
       btn.classList.add('active');
       parlayRecsWindow = parseInt(btn.dataset.w, 10);
+      if (precSelectedHome && precSelectedAway) {
+        loadMatchupParlays(precSelectedHome, precSelectedAway, parlayRecsWindow);
+      }
     });
-  });
-
-  // ANALYZE button
-  $id('precGoBtn').addEventListener('click', function() {
-    var home = $id('precHomeTeam').value;
-    var away = $id('precAwayTeam').value;
-    if (home && away && home !== away) loadMatchupParlays(home, away, parlayRecsWindow);
   });
 }
 
 // ── Navigation ─────────────────────────────────────────────────────
-function goParlay() { showPage('parlay'); }
+function goParlay() {
+  showPage('parlay');
+  loadPrecTodayGames();
+}
+
+// ── Today's schedule picker ─────────────────────────────────────────
+var precGamesCache = null;
+
+async function loadPrecTodayGames() {
+  var ds = todayStr();
+  $id('precTodayDate').textContent = ds;
+
+  if (precGamesCache !== null) { renderPrecGames(precGamesCache); return; }
+
+  $id('precGameGrid').innerHTML = '<div class="prec-no-games">Loading today\'s games…</div>';
+
+  try {
+    if (!serverOnline) throw new Error('Server offline');
+    var r = await fetch(API_BASE + '/api/schedule?date=' + ds, { signal: AbortSignal.timeout(20000) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var data = await r.json();
+    precGamesCache = data.games || [];
+    renderPrecGames(precGamesCache);
+  } catch(err) {
+    $id('precGameGrid').innerHTML = '<div class="prec-no-games">Could not load schedule — ' + escHtml(err.message) + '</div>';
+  }
+}
+
+function renderPrecGames(games) {
+  if (!games.length) {
+    $id('precGameGrid').innerHTML = '<div class="prec-no-games">No games today.</div>';
+    return;
+  }
+  var html = '';
+  games.forEach(function(g) {
+    var sel = (g.awayTricode === precSelectedAway && g.homeTricode === precSelectedHome) ? ' selected' : '';
+    html += '<div class="prec-game-pill' + sel + '" data-home="' + escHtml(g.homeTricode) + '" data-away="' + escHtml(g.awayTricode) + '">'
+      + '<div class="prec-pill-teams">' + escHtml(g.awayTricode) + ' @ ' + escHtml(g.homeTricode) + '</div>'
+      + '<div class="prec-pill-time">' + escHtml(g.statusText) + '</div>'
+      + '</div>';
+  });
+  $id('precGameGrid').innerHTML = html;
+
+  $id('precGameGrid').querySelectorAll('.prec-game-pill').forEach(function(pill) {
+    pill.addEventListener('click', function() {
+      precSelectedHome = pill.dataset.home;
+      precSelectedAway = pill.dataset.away;
+      // Highlight selected pill
+      $id('precGameGrid').querySelectorAll('.prec-game-pill').forEach(function(p) { p.classList.remove('selected'); });
+      pill.classList.add('selected');
+      loadMatchupParlays(precSelectedHome, precSelectedAway, parlayRecsWindow);
+    });
+  });
+}
 
 // ── Add player to parlay ───────────────────────────────────────────
 async function addParlayPlayer(name) {
