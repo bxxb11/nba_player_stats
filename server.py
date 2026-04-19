@@ -77,6 +77,56 @@ CORS(app)
 SEASON = "2025-26"
 SEASON_TYPE = "Regular Season"
 
+_team_profiles_cache = {"data": None, "ts": 0}
+_TEAM_PROFILES_TTL = 14400  # 4 hours
+
+# (raw_field, dim_key, inverted)
+_PROFILE_DIMS = [
+    ("off_rating",     "off_volume",          False),
+    ("pct_fga_3pt",    "three_pt_attack",     False),
+    ("pct_pts_paint",  "paint_attack",        False),
+    ("pace",           "pace_tempo",          False),
+    ("ast_pct",        "ball_movement",       False),
+    ("fta",            "ft_generation",       False),
+    ("def_rating",     "def_overall",         True ),
+    ("opp_fg3m",       "three_pt_defense",    True ),
+    ("opp_pts_paint",  "paint_defense",       True ),
+    ("dreb_pct",       "rebound_defense",     False),
+    ("opp_tov",        "turnover_force",      False),
+    ("opp_pts_fb",     "transition_defense",  True ),
+]
+
+_DIM_META = {
+    "off_volume":          {"label": "Scoring Volume",    "metric": "OFF RTG"},
+    "three_pt_attack":     {"label": "3-Pt Attack",       "metric": "% FGA 3PT"},
+    "paint_attack":        {"label": "Paint Dominance",   "metric": "% PTS Paint"},
+    "pace_tempo":          {"label": "Pace & Tempo",      "metric": "PACE"},
+    "ball_movement":       {"label": "Ball Movement",     "metric": "AST%"},
+    "ft_generation":       {"label": "FT Generation",     "metric": "FTA/g"},
+    "def_overall":         {"label": "Overall Defense",   "metric": "DEF RTG"},
+    "three_pt_defense":    {"label": "3-Pt Defense",      "metric": "OPP 3PM"},
+    "paint_defense":       {"label": "Paint Defense",     "metric": "OPP PTS Paint"},
+    "rebound_defense":     {"label": "Rebound Defense",   "metric": "DREB%"},
+    "turnover_force":      {"label": "Turnover Forcing",  "metric": "OPP TOV/g"},
+    "transition_defense":  {"label": "Transition Defense","metric": "OPP PTS FB"},
+}
+
+_MATCHUP_PAIRS = [
+    ("three_pt_attack",  "three_pt_defense",   0.25),
+    ("paint_attack",     "paint_defense",       0.25),
+    ("pace_tempo",       "transition_defense",  0.20),
+    ("ball_movement",    "turnover_force",      0.15),
+    ("ft_generation",    "def_overall",         0.15),
+]
+
+_MATCHUP_LABELS = [
+    (75, "Favorable Matchup"),
+    (55, "Slight Edge"),
+    (45, "Even"),
+    (25, "Slight Disadvantage"),
+    (0,  "Tough Matchup"),
+]
+
 
 # ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -104,6 +154,188 @@ def safe_float(v, precision=1):
         return round(float(v or 0), precision)
     except Exception:
         return 0.0
+
+
+# ── Team-profile helpers ─────────────────────────────────────────────────────
+
+def _get_team_row(df, team_id):
+    if df is None:
+        return None
+    m = df[df["TEAM_ID"] == team_id]
+    return m.iloc[0] if not m.empty else None
+
+
+def _sf(row, field, prec=1):
+    if row is None:
+        return 0.0
+    return safe_float(row.get(field), prec)
+
+
+def _pct_rank(val, all_vals, inverted=False):
+    n = len(all_vals)
+    if n == 0:
+        return 50
+    count = sum(1 for v in all_vals if (v >= val if inverted else v <= val))
+    return max(1, min(100, round(count / n * 100)))
+
+
+def _fetch_all_team_data():
+    abbr_lookup = {int(t["id"]): t["abbreviation"] for t in nba_teams.get_teams()}
+
+    time.sleep(0.3)
+    df_base = nba_call(lambda: LeagueDashTeamStats(
+        season=SEASON, per_mode_detailed="PerGame",
+        measure_type_detailed_defense="Base",
+        season_type_all_star=SEASON_TYPE, timeout=25,
+    )).league_dash_team_stats.get_data_frame()
+
+    time.sleep(0.4)
+    df_opp = nba_call(lambda: LeagueDashTeamStats(
+        season=SEASON, per_mode_detailed="PerGame",
+        measure_type_detailed_defense="Opponent",
+        season_type_all_star=SEASON_TYPE, timeout=25,
+    )).league_dash_team_stats.get_data_frame()
+
+    time.sleep(0.4)
+    df_adv = nba_call(lambda: LeagueDashTeamStats(
+        season=SEASON, per_mode_detailed="PerGame",
+        measure_type_detailed_defense="Advanced",
+        season_type_all_star=SEASON_TYPE, timeout=25,
+    )).league_dash_team_stats.get_data_frame()
+
+    time.sleep(0.4)
+    df_scr = None
+    try:
+        df_scr = nba_call(lambda: LeagueDashTeamStats(
+            season=SEASON, per_mode_detailed="PerGame",
+            measure_type_detailed_defense="Scoring",
+            season_type_all_star=SEASON_TYPE, timeout=25,
+        )).league_dash_team_stats.get_data_frame()
+    except Exception:
+        pass
+
+    time.sleep(0.4)
+    df_def = None
+    try:
+        df_def = nba_call(lambda: LeagueDashTeamStats(
+            season=SEASON, per_mode_detailed="PerGame",
+            measure_type_detailed_defense="Defense",
+            season_type_all_star=SEASON_TYPE, timeout=25,
+        )).league_dash_team_stats.get_data_frame()
+    except Exception:
+        pass
+
+    teams = []
+    for _, r in df_base.iterrows():
+        tid = int(r["TEAM_ID"])
+        ro  = _get_team_row(df_opp, tid)
+        ra  = _get_team_row(df_adv, tid)
+        rs  = _get_team_row(df_scr, tid)
+        rd  = _get_team_row(df_def, tid)
+        teams.append({
+            "team_id":       tid,
+            "team_abbr":     abbr_lookup.get(tid, ""),
+            "team_name":     str(r.get("TEAM_NAME", "")),
+            "fta":           _sf(r,  "FTA"),
+            "off_rating":    _sf(ra, "OFF_RATING"),
+            "def_rating":    _sf(ra, "DEF_RATING"),
+            "pace":          _sf(ra, "PACE"),
+            "ast_pct":       _sf(ra, "AST_PCT", 3),
+            "dreb_pct":      _sf(ra, "DREB_PCT", 3),
+            "opp_fg3m":      _sf(ro, "OPP_FG3M"),
+            "opp_tov":       _sf(ro, "OPP_TOV"),
+            "opp_pts":       _sf(ro, "OPP_PTS"),
+            "pct_fga_3pt":   _sf(rs, "PCT_FGA_3PT",   3),
+            "pct_pts_paint": _sf(rs, "PCT_PTS_PAINT",  3),
+            "pct_pts_fb":    _sf(rs, "PCT_PTS_FB",     3),
+            "opp_pts_paint": _sf(rd, "OPP_PTS_PAINT"),
+            "opp_pts_fb":    _sf(rd, "OPP_PTS_FB"),
+        })
+    return teams
+
+
+def _add_percentile_ranks(teams):
+    all_vals = {field: [t[field] for t in teams] for field, _, _ in _PROFILE_DIMS}
+    for t in teams:
+        t["pct_ranks"] = {
+            dim_key: _pct_rank(t[field], all_vals[field], inv)
+            for field, dim_key, inv in _PROFILE_DIMS
+        }
+    return teams
+
+
+def _classify_off_style(off_scores):
+    s = off_scores
+    if s.get("three_pt_attack", 50) > 70:
+        return "3-Point Heavy"
+    if s.get("paint_attack", 50) > 70 and s.get("three_pt_attack", 50) < 50:
+        return "Paint Dominant"
+    if s.get("pace_tempo", 50) > 70:
+        return "Fast Pace"
+    if s.get("pace_tempo", 50) < 30:
+        return "Grind / Halfcourt"
+    return "Balanced"
+
+
+def _build_team_profile(team):
+    pr = team.get("pct_ranks", {})
+    offense, defense = {}, {}
+    for field, dim_key, _ in _PROFILE_DIMS[:6]:
+        offense[dim_key] = {
+            "score":  pr.get(dim_key, 50),
+            "label":  _DIM_META[dim_key]["label"],
+            "metric": _DIM_META[dim_key]["metric"],
+            "value":  team.get(field, 0),
+        }
+    for field, dim_key, _ in _PROFILE_DIMS[6:]:
+        defense[dim_key] = {
+            "score":  pr.get(dim_key, 50),
+            "label":  _DIM_META[dim_key]["label"],
+            "metric": _DIM_META[dim_key]["metric"],
+            "value":  team.get(field, 0),
+        }
+    off_scores = {k: v["score"] for k, v in offense.items()}
+    return {
+        "team":     team["team_abbr"],
+        "teamName": team["team_name"],
+        "offStyle": _classify_off_style(off_scores),
+        "offense":  offense,
+        "defense":  defense,
+    }
+
+
+def _compute_matchup_score(att, def_):
+    breakdown = []
+    weighted_sum = 0.0
+    for off_dim, def_dim, weight in _MATCHUP_PAIRS:
+        off_sc = att["offense"][off_dim]["score"]
+        def_sc = def_["defense"][def_dim]["score"]
+        delta  = off_sc - (100 - def_sc)
+        weighted_sum += delta * weight
+        if delta > 15:
+            verdict = "Clear advantage"
+        elif delta > 0:
+            verdict = "Slight edge"
+        elif delta < -15:
+            verdict = "Clear disadvantage"
+        else:
+            verdict = "Even"
+        breakdown.append({
+            "offDim":   off_dim,
+            "defDim":   def_dim,
+            "offLabel": att["offense"][off_dim]["label"],
+            "defLabel": def_["defense"][def_dim]["label"],
+            "offScore": off_sc,
+            "defScore": def_sc,
+            "delta":    round(delta, 1),
+            "verdict":  verdict,
+        })
+    score = max(0, min(100, round((weighted_sum + 100) / 2)))
+    label = next(
+        (lbl for thresh, lbl in _MATCHUP_LABELS if score >= thresh),
+        "Tough Matchup"
+    )
+    return {"score": score, "label": label, "breakdown": breakdown}
 
 
 def find_player(name: str):
@@ -727,6 +959,64 @@ def team_rankings():
 
     except Exception as e:
         return jsonify({"error": str(e), "detail": traceback.format_exc()}), 500
+
+
+@app.route("/api/team-profiles")
+def team_profiles_ep():
+    """Return offensive/defensive profiles for all 30 teams. Cached 4 hours."""
+    global _team_profiles_cache
+    now = time.time()
+    if _team_profiles_cache["data"] and now - _team_profiles_cache["ts"] < _TEAM_PROFILES_TTL:
+        return jsonify(_team_profiles_cache["data"])
+    try:
+        teams_data = _fetch_all_team_data()
+        _add_percentile_ranks(teams_data)
+        profiles = [_build_team_profile(t) for t in teams_data]
+        by_team  = {p["team"]: p for p in profiles}
+        result   = {"profiles": profiles, "by_team": by_team, "season": SEASON}
+        _team_profiles_cache["data"] = result
+        _team_profiles_cache["ts"]   = now
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e), "detail": traceback.format_exc()}), 500
+
+
+@app.route("/api/matchup-strength")
+def matchup_strength_ep():
+    """Return matchup score + profiles for a given attacker vs defender."""
+    attacker = request.args.get("attacker", "").strip().upper()
+    defender = request.args.get("defender", "").strip().upper()
+    if not attacker or not defender:
+        return jsonify({"error": "attacker and defender parameters required"}), 400
+
+    global _team_profiles_cache
+    now = time.time()
+    if not (_team_profiles_cache["data"] and now - _team_profiles_cache["ts"] < _TEAM_PROFILES_TTL):
+        try:
+            teams_data = _fetch_all_team_data()
+            _add_percentile_ranks(teams_data)
+            profiles = [_build_team_profile(t) for t in teams_data]
+            by_team  = {p["team"]: p for p in profiles}
+            _team_profiles_cache["data"] = {"profiles": profiles, "by_team": by_team, "season": SEASON}
+            _team_profiles_cache["ts"]   = now
+        except Exception as e:
+            return jsonify({"error": str(e), "detail": traceback.format_exc()}), 500
+
+    by_team     = _team_profiles_cache["data"]["by_team"]
+    att_profile = by_team.get(attacker)
+    def_profile = by_team.get(defender)
+    if not att_profile:
+        return jsonify({"error": f"Team not found: {attacker}"}), 404
+    if not def_profile:
+        return jsonify({"error": f"Team not found: {defender}"}), 404
+
+    return jsonify({
+        "attacker":        attacker,
+        "defender":        defender,
+        "matchupScore":    _compute_matchup_score(att_profile, def_profile),
+        "attackerProfile": att_profile,
+        "defenderProfile": def_profile,
+    })
 
 
 @app.route("/api/matchup-parlays")

@@ -182,6 +182,29 @@ header{
 .ic-lbl{font-family:'DM Mono',monospace;font-size:7px;color:var(--muted);letter-spacing:1px;margin-bottom:3px;}
 .ic-val{font-family:'DM Mono',monospace;font-size:10px;color:var(--text);}
 
+/* MATCHUP STRENGTH */
+.ms-score-badge{display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--panel);border:1px solid var(--border);border-radius:8px;margin-bottom:14px;}
+.ms-score-num{font-family:'Bebas Neue',sans-serif;font-size:44px;line-height:1;min-width:54px;}
+.ms-score-num.ms-favorable{color:var(--green);}
+.ms-score-num.ms-edge{color:rgba(0,230,118,.75);}
+.ms-score-num.ms-even{color:var(--muted);}
+.ms-score-num.ms-disadvantage{color:rgba(255,23,68,.75);}
+.ms-score-num.ms-tough{color:var(--red);}
+.ms-score-right{display:flex;flex-direction:column;gap:3px;}
+.ms-score-lbl{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;}
+.ms-score-sub{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);}
+.ms-profiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.ms-profile-col{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px;}
+.ms-profile-title{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--muted);margin-bottom:6px;}
+.ms-style-tag{display:inline-block;font-family:'DM Mono',monospace;font-size:8px;padding:2px 6px;border-radius:3px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.15);color:var(--cyan);margin-bottom:6px;}
+.ms-breakdown{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+.ms-bk-card{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:8px 10px;}
+.ms-bk-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;}
+.ms-bk-dims{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);}
+.ms-bk-delta{font-family:'Bebas Neue',sans-serif;font-size:16px;line-height:1;}
+.ms-bk-verdict{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);}
+.ms-loading{display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 0;}
+
 /* H2H SUMMARY */
 .h2h-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
 .h2h-card{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:10px 12px;position:relative;}
@@ -613,6 +636,7 @@ header{
             Backend fetches ~10 players (~40–80 sec). Results are cached for this session.
           </div>
         </div>
+        <div id="precMatchupStrength"></div>
       </div>
 
     </div>
@@ -680,6 +704,7 @@ const PROP_TYPES = [
 let currentPlayer = null;
 const propLines = {};
 let teamsCache = null;
+var matchupStrengthCache = {};  // keyed "ATT-DEF"
 
 // ── DOM REFS ───────────────────────────────────────────────────────────────
 function $id(id) { return document.getElementById(id); }
@@ -1435,7 +1460,172 @@ function renderMatchup(d) {
     + '<div class="info-card"><div class="ic-lbl">PACE</div><div class="ic-val">' + (od.pace||'—') + '</div></div>'
     + '<div class="info-card"><div class="ic-lbl">VENUE</div><div class="ic-val">' + (d.isHome?'HOME':'AWAY') + '</div></div>'
     + '</div>'
-    + h2hHtml;
+    + h2hHtml
+    + '<div id="matchupStrengthSection" style="margin-top:4px;"></div>';
+
+  if (d.team && d.opponent) {
+    loadMatchupStrength(d.team, d.opponent);
+  }
+}
+
+// ── MATCHUP STRENGTH ────────────────────────────────────────────────────────
+async function loadMatchupStrength(attackerTeam, defenderTeam) {
+  var cacheKey = attackerTeam + '-' + defenderTeam;
+  var el = $id('matchupStrengthSection');
+  if (!el) return;
+
+  if (matchupStrengthCache[cacheKey]) {
+    renderMatchupStrength(matchupStrengthCache[cacheKey], el);
+    return;
+  }
+
+  el.innerHTML = '<div class="ms-loading"><div class="dots"><span></span><span></span><span></span></div>'
+    + '<div class="loading-msg" style="font-size:9px;">Loading team strength analysis…</div></div>';
+
+  try {
+    if (!serverOnline) throw new Error('Server offline');
+    var url = API_BASE + '/api/matchup-strength?attacker=' + encodeURIComponent(attackerTeam)
+      + '&defender=' + encodeURIComponent(defenderTeam);
+    var r = await fetch(url, { signal: AbortSignal.timeout(120000) });
+    if (!r.ok) {
+      var b = await r.json().catch(function() { return {}; });
+      throw new Error(b.error || 'HTTP ' + r.status);
+    }
+    var data = await r.json();
+    matchupStrengthCache[cacheKey] = data;
+    var target = $id('matchupStrengthSection');
+    if (target) renderMatchupStrength(data, target);
+  } catch(err) {
+    var target = $id('matchupStrengthSection');
+    if (target) target.innerHTML = '<div style="font-family:\'DM Mono\',monospace;font-size:9px;color:var(--muted2);padding:8px 0;">'
+      + 'Team strength unavailable: ' + escHtml(err.message) + '</div>';
+  }
+}
+
+function renderMatchupStrength(data, container) {
+  var ms  = data.matchupScore;
+  var att = data.attackerProfile;
+  var def = data.defenderProfile;
+  if (!ms || !att || !def) { container.innerHTML = ''; return; }
+
+  var score    = ms.score;
+  var scoreCls = score >= 75 ? 'ms-favorable' : score >= 55 ? 'ms-edge'
+               : score >= 45 ? 'ms-even'      : score >= 25 ? 'ms-disadvantage' : 'ms-tough';
+  var scoreColor = score >= 75 ? 'var(--green)' : score >= 55 ? 'rgba(0,230,118,.75)'
+                 : score >= 45 ? 'var(--muted)' : score >= 25 ? 'rgba(255,23,68,.75)' : 'var(--red)';
+
+  var html = '<div class="sec-lbl" style="margin-top:16px;">TEAM MATCHUP STRENGTH</div>';
+
+  // Score badge
+  html += '<div class="ms-score-badge">'
+    + '<div class="ms-score-num ' + scoreCls + '">' + score + '</div>'
+    + '<div class="ms-score-right">'
+    +   '<div class="ms-score-lbl" style="color:' + scoreColor + '">' + escHtml(ms.label.toUpperCase()) + '</div>'
+    +   '<div class="ms-score-sub">' + escHtml(att.team) + ' offense vs ' + escHtml(def.team) + ' defense</div>'
+    +   '<div class="ms-score-sub" style="margin-top:2px;">0 = toughest · 100 = most favorable</div>'
+    + '</div></div>';
+
+  // Two-column profiles
+  html += '<div class="ms-profiles">'
+    + buildProfileCol(att, 'OFF — ' + att.team, 'offense')
+    + buildProfileCol(def, 'DEF — ' + def.team, 'defense')
+    + '</div>';
+
+  // Breakdown cards
+  html += '<div class="sec-lbl">DIMENSION BREAKDOWN</div><div class="ms-breakdown">';
+  (ms.breakdown || []).forEach(function(bk) {
+    var delta     = bk.delta || 0;
+    var deltaStr  = (delta > 0 ? '+' : '') + delta.toFixed(0);
+    var deltaCls  = delta > 10 ? 't-green' : delta < -10 ? 't-red' : 't-muted';
+    html += '<div class="ms-bk-card">'
+      + '<div class="ms-bk-head">'
+      +   '<div class="ms-bk-dims">' + escHtml(bk.offLabel) + ' vs ' + escHtml(bk.defLabel) + '</div>'
+      +   '<div class="ms-bk-delta ' + deltaCls + '">' + deltaStr + '</div>'
+      + '</div>'
+      + '<div class="ms-bk-verdict">' + escHtml(bk.verdict) + '</div>'
+      + '</div>';
+  });
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+function buildProfileCol(profile, title, side) {
+  var dims = side === 'offense' ? profile.offense : profile.defense;
+  var styleTag = side === 'offense'
+    ? '<div class="ms-style-tag">' + escHtml(profile.offStyle || '') + '</div>'
+    : '';
+  var bars = Object.keys(dims).map(function(key) {
+    var d     = dims[key];
+    var score = d.score || 0;
+    var fill  = score >= 70 ? 'var(--green)' : score <= 30 ? 'var(--red)' : 'var(--warn)';
+    return '<div class="dbar-row">'
+      + '<div class="dbar-lbl" style="font-size:7px;">' + escHtml(d.label) + '</div>'
+      + '<div class="dbar-track"><div class="dbar-fill" style="width:' + score + '%;background:' + fill + '"></div></div>'
+      + '<div class="dbar-val">' + score + '</div>'
+      + '</div>';
+  }).join('');
+  return '<div class="ms-profile-col">'
+    + '<div class="ms-profile-title">' + escHtml(title) + '</div>'
+    + styleTag
+    + bars
+    + '</div>';
+}
+
+async function loadPrecMatchupStrength(home, away) {
+  var el = $id('precMatchupStrength');
+  if (!el) return;
+  el.innerHTML = '<div class="ms-loading" style="margin-top:12px;"><div class="dots"><span></span><span></span><span></span></div>'
+    + '<div class="loading-msg" style="font-size:9px;">Loading matchup strength…</div></div>';
+
+  try {
+    if (!serverOnline) throw new Error('Server offline');
+    var [homeAtk, awayAtk] = await Promise.all([
+      fetchMatchupStrength(home, away),
+      fetchMatchupStrength(away, home),
+    ]);
+    var html = '<div class="sec-lbl" style="margin-top:16px;">MATCHUP STRENGTH — ' + escHtml(away) + ' @ ' + escHtml(home) + '</div>'
+      + '<div class="ms-profiles" style="margin-bottom:8px;">'
+      + buildMatchupScoreTile(homeAtk, home + ' ATK', away + ' DEF')
+      + buildMatchupScoreTile(awayAtk, away + ' ATK', home + ' DEF')
+      + '</div>'
+      + '<div class="ms-profiles">'
+      + buildProfileCol(homeAtk.attackerProfile, 'OFF — ' + home, 'offense')
+      + buildProfileCol(awayAtk.attackerProfile, 'OFF — ' + away, 'offense')
+      + '</div>'
+      + '<div class="ms-profiles">'
+      + buildProfileCol(awayAtk.defenderProfile, 'DEF — ' + home, 'defense')
+      + buildProfileCol(homeAtk.defenderProfile, 'DEF — ' + away, 'defense')
+      + '</div>';
+    el.innerHTML = html;
+  } catch(err) {
+    el.innerHTML = '<div style="font-family:\'DM Mono\',monospace;font-size:9px;color:var(--muted2);padding:8px 0;">'
+      + 'Matchup strength unavailable: ' + escHtml(err.message) + '</div>';
+  }
+}
+
+async function fetchMatchupStrength(attacker, defender) {
+  var cacheKey = attacker + '-' + defender;
+  if (matchupStrengthCache[cacheKey]) return matchupStrengthCache[cacheKey];
+  var url = API_BASE + '/api/matchup-strength?attacker=' + encodeURIComponent(attacker)
+    + '&defender=' + encodeURIComponent(defender);
+  var r = await fetch(url, { signal: AbortSignal.timeout(120000) });
+  if (!r.ok) { var b = await r.json().catch(function(){return{};}); throw new Error(b.error || 'HTTP ' + r.status); }
+  var data = await r.json();
+  matchupStrengthCache[cacheKey] = data;
+  return data;
+}
+
+function buildMatchupScoreTile(data, atkLabel, defLabel) {
+  var ms = data.matchupScore;
+  var score = ms.score;
+  var scoreCls = score >= 75 ? 'ms-favorable' : score >= 55 ? 'ms-edge'
+               : score >= 45 ? 'ms-even'      : score >= 25 ? 'ms-disadvantage' : 'ms-tough';
+  return '<div class="ms-profile-col" style="text-align:center;">'
+    + '<div class="ms-profile-title">' + escHtml(atkLabel) + ' vs ' + escHtml(defLabel) + '</div>'
+    + '<div class="ms-score-num ' + scoreCls + '" style="font-size:36px;">' + score + '</div>'
+    + '<div style="font-family:\'DM Mono\',monospace;font-size:8px;color:var(--muted);margin-top:4px;">'
+    + escHtml(ms.label) + '</div></div>';
 }
 
 // ── TABS ───────────────────────────────────────────────────────────────────
@@ -1727,6 +1917,7 @@ function renderPrecGames(games) {
       $id('precGameGrid').querySelectorAll('.prec-game-pill').forEach(function(p) { p.classList.remove('selected'); });
       pill.classList.add('selected');
       loadMatchupParlays(precSelectedHome, precSelectedAway, parlayRecsWindow);
+      loadPrecMatchupStrength(precSelectedHome, precSelectedAway);
     });
   });
 }
