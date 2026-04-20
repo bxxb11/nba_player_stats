@@ -163,6 +163,8 @@ header{
 .bh{background:rgba(0,229,255,.1);color:var(--cyan);}
 .ba{background:rgba(74,101,128,.15);color:var(--muted);}
 .bb{background:rgba(255,171,0,.1);color:var(--warn);}
+.bpo{background:rgba(255,109,0,.15);color:var(--orange);font-weight:500;}
+.log-playoff-row td{background:rgba(255,109,0,.03);}
 
 /* MATCHUP */
 .def-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
@@ -271,6 +273,43 @@ header{
 /* ERROR */
 .error-box{background:rgba(255,23,68,.06);border:1px solid rgba(255,23,68,.2);border-radius:8px;padding:16px;margin:20px 16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--red);line-height:1.7;}
 .error-box b{font-weight:500;}
+
+/* ── INSIGHTS TAB ── */
+.insights-section{margin-bottom:28px;}
+.insights-section h3{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.insights-note{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted2);margin-bottom:10px;line-height:1.6;}
+.ins-tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.ins-tbl{width:100%;border-collapse:collapse;min-width:480px;}
+.ins-tbl th{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--muted);text-align:right;padding:6px 6px;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s;}
+.ins-tbl th:hover{color:var(--text);}
+.ins-tbl th:first-child,.ins-tbl th:nth-child(2){text-align:left;}
+.ins-tbl th.sort-asc::after{content:' ▲';color:var(--cyan);}
+.ins-tbl th.sort-desc::after{content:' ▼';color:var(--cyan);}
+.ins-tbl td{font-family:'DM Mono',monospace;font-size:10px;padding:5px 6px;text-align:right;border-bottom:1px solid rgba(26,34,51,.4);}
+.ins-tbl td:first-child{text-align:left;color:var(--text);white-space:nowrap;}
+.ins-tbl td:nth-child(2){text-align:left;color:var(--muted);font-size:9px;}
+.ins-tbl tr.ins-highlight td{background:rgba(0,229,255,.05);border-left:2px solid var(--cyan);}
+.ins-tbl tr:hover td{background:rgba(255,255,255,.02);}
+.ins-null{color:var(--muted2);}
+/* Heatmap */
+.hm-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.hm-tbl{border-collapse:collapse;font-family:'DM Mono',monospace;font-size:9px;}
+.hm-corner{text-align:left;padding:4px 8px 4px 0;font-size:7px;letter-spacing:1px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;min-width:130px;}
+.hm-col-hdr{padding:4px 6px;text-align:center;font-size:7px;letter-spacing:.5px;color:var(--muted);white-space:nowrap;border-bottom:1px solid var(--border);min-width:54px;}
+.hm-row-lbl{padding:3px 10px 3px 0;white-space:nowrap;text-align:left;font-size:9px;color:var(--text);max-width:150px;overflow:hidden;text-overflow:ellipsis;}
+.hm-cell{padding:3px 4px;text-align:center;font-size:9px;font-family:'DM Mono',monospace;min-width:48px;transition:filter .1s;}
+.hm-tbl tr.hm-hl .hm-row-lbl{color:var(--cyan);font-weight:500;}
+.hm-tbl tr.hm-hl .hm-cell{outline:1px solid rgba(0,229,255,.3);}
+/* Rankings toggle */
+.rankings-toggle{display:flex;gap:8px;margin-bottom:12px;}
+.rank-tog-btn{background:var(--bg3);border:1px solid var(--border);color:var(--muted);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;padding:6px 14px;border-radius:4px;cursor:pointer;transition:all .15s;}
+.rank-tog-btn.active{border-color:var(--cyan);color:var(--cyan);background:rgba(0,229,255,.06);}
+.rank-tog-btn:hover:not(.active){border-color:var(--border2);color:var(--text);}
+/* Refresh */
+.refresh-btn{background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1px;padding:4px 8px;border-radius:3px;cursor:pointer;transition:all .15s;}
+.refresh-btn:hover{border-color:var(--cyan);color:var(--cyan);}
+.refresh-btn.running{border-color:rgba(255,171,0,.4);color:var(--warn);animation:pulse .8s infinite alternate;}
+.refresh-status-lbl{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted2);}
 
 /* ── DESKTOP RESPONSIVE ── */
 @media(min-width:768px){
@@ -532,7 +571,11 @@ header{
         <div class="risk-flags" id="riskFlags"></div>
         <div class="save-row">
           <div class="fetched-at" id="fetchedAt"></div>
-          <div class="save-btn" id="saveJsonBtn">↓ SAVE JSON</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="refresh-btn" id="refreshBtn" onclick="triggerRefresh()" title="Re-run all analysis notebooks (~5 min)">↻ REFRESH ANALYSIS</button>
+            <span class="refresh-status-lbl" id="refreshStatusLbl"></span>
+            <div class="save-btn" id="saveJsonBtn">↓ SAVE JSON</div>
+          </div>
         </div>
       </div>
 
@@ -544,6 +587,7 @@ header{
         <div class="tab" data-t="log">LOG</div>
         <div class="tab" data-t="matchup">MATCHUP</div>
         <div class="tab" data-t="teams">TEAMS</div>
+        <div class="tab" data-t="insights">INSIGHTS</div>
       </div>
 
       <div class="tab-panel active" id="tp-overview">
@@ -570,6 +614,47 @@ header{
       <div class="tab-panel" id="tp-teams">
         <div id="teamsContent">
           <div class="loading-msg" style="padding:24px 0;text-align:center;">Click to load team rankings</div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tp-insights">
+        <!-- S1: Player Season Metrics -->
+        <div class="insights-section">
+          <h3>PLAYER SEASON METRICS</h3>
+          <p class="insights-note">Top 20 assist producers + selected player. Click column headers to sort.</p>
+          <div class="ins-tbl-wrap" id="insPlayerStatsWrap">
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted2);padding:20px 0;text-align:center;">Select a player to load insights.</div>
+          </div>
+        </div>
+        <!-- S2: AST Edge by Defensive Cluster heatmap -->
+        <div class="insights-section">
+          <h3>AST EDGE BY DEFENSIVE CLUSTER</h3>
+          <p class="insights-note">Assists above/below season avg vs each defensive archetype. Selected player shown first (cyan).</p>
+          <div class="hm-wrap" id="insClusterHmWrap"></div>
+        </div>
+        <!-- S3: Per-Opponent Breakdown table -->
+        <div class="insights-section">
+          <h3>PER-OPPONENT BREAKDOWN — <span id="insMatchupPlayerName">—</span></h3>
+          <p class="insights-note">Min 2 games vs opponent. Sorted by AST edge (most favorable first).</p>
+          <div class="ins-tbl-wrap" id="insMatchupTblWrap"></div>
+        </div>
+        <!-- S4: Play-Type Coefficient heatmap -->
+        <div class="insights-section">
+          <h3>PLAY-TYPE ATTRIBUTION (RIDGE COEFFICIENTS)</h3>
+          <p class="insights-note">How opponent's defensive strength in each play type affects AST edge. Red = hurts assists, Blue = helps.</p>
+          <div class="hm-wrap" id="insCoefHmWrap"></div>
+        </div>
+        <!-- S5: League Rankings -->
+        <div class="insights-section">
+          <h3>LEAGUE PLAY-TYPE RANKINGS</h3>
+          <p class="insights-note">Rank 1 = best in league. Green = top 10, Red = bottom 10.</p>
+          <div class="rankings-toggle">
+            <button class="rank-tog-btn active" id="rankTogOff" onclick="showRankings('offense')">OFFENSE</button>
+            <button class="rank-tog-btn" id="rankTogDef" onclick="showRankings('defense')">DEFENSE</button>
+          </div>
+          <div class="hm-wrap" id="insRankingsWrap">
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted2);padding:20px 0;text-align:center;">Select a player to load rankings.</div>
+          </div>
         </div>
       </div>
 
@@ -857,7 +942,6 @@ async function fetchFromAPI(playerName) {
     playerData._fetchedAt = new Date().toISOString();
 
     saveToCache(playerName, playerData);
-    downloadJson(playerData);
 
     currentPlayer = playerData;
     renderAnalysis(currentPlayer, 'just now');
@@ -1097,7 +1181,7 @@ function buildPropCard(pt, games, sa) {
 }
 
 function renderLog(d) {
-  const games = (d.games || []).slice(0, 30);
+  const games = (d.games || []);
   if (!games.length) {
     $id('logTbl').innerHTML = '<tr><td style="color:var(--muted);padding:16px;">No game data available.</td></tr>';
     return;
@@ -1119,14 +1203,16 @@ function renderLog(d) {
       return '<td' + h + '>' + (val !== null && val !== undefined ? val : '—') + '</td>';
     };
     const badges = (g.home ? '<span class="badge bh">H</span>' : '<span class="badge ba">A</span>')
-      + (g.b2b ? '<span class="badge bb">B2B</span>' : '');
+      + (g.b2b ? '<span class="badge bb">B2B</span>' : '')
+      + (g.playoff ? '<span class="badge bpo">PO</span>' : '');
+    const rowClass = g.playoff ? ' class="log-playoff-row"' : '';
     const wlColor = g.wl === 'W' ? 'color:var(--green)' : g.wl === 'L' ? 'color:var(--red)' : '';
     const pm = g.pm !== undefined && g.pm !== null ? g.pm : null;
     const pmStr = pm !== null ? (pm > 0 ? '+'+pm : String(pm)) : '—';
     const pmColor = pm > 0 ? 'color:var(--green)' : pm < 0 ? 'color:var(--red)' : '';
     const fgPct = g.fg_pct != null ? (g.fg_pct * 100).toFixed(0) : '—';
     const ftPct = g.ft_pct != null ? (g.ft_pct * 100).toFixed(0) : '—';
-    html += '<tr>'
+    html += '<tr' + rowClass + '>'
       + '<td>' + (g.date ? g.date.slice(5) : '—') + '</td>'
       + '<td>' + (g.opp||'—') + badges + '</td>'
       + td(g.min)
@@ -2742,6 +2828,378 @@ function renderSchedule(games) {
 }
 
 document.addEventListener('DOMContentLoaded', function() { initSchedule(); });
+
+// ══════════════════════════════════════════════════════════════════
+// INSIGHTS TAB
+// ══════════════════════════════════════════════════════════════════
+
+var _insightsPlayerName = null;
+var _insightsRanksData = null;
+var _insightsLoaded = false;
+
+// ── Hook into switchTab ───────────────────────────────────────────
+var _origSwitchTab = switchTab;
+switchTab = function(name) {
+  _origSwitchTab(name);
+  if (name === 'insights' && _insightsPlayerName && !_insightsLoaded) {
+    loadInsights(_insightsPlayerName);
+  }
+};
+
+// ── Hook into renderAnalysis to reset insights state ─────────────
+var _origRenderAnalysis = renderAnalysis;
+renderAnalysis = function(d, age) {
+  _insightsPlayerName = d ? d.name : null;
+  _insightsLoaded = false;
+  _origRenderAnalysis(d, age);
+};
+
+// ── Generic sortable table ────────────────────────────────────────
+function makeSortable(table) {
+  table.querySelectorAll('thead th').forEach(function(th, colIdx) {
+    if (th.dataset.nosort) return;
+    th.style.cursor = 'pointer';
+    var dir = 1;
+    th.addEventListener('click', function() {
+      var tbody = table.querySelector('tbody');
+      if (!tbody) return;
+      var rows = Array.from(tbody.querySelectorAll('tr'));
+      rows.sort(function(a, b) {
+        var ac = a.cells[colIdx], bc = b.cells[colIdx];
+        if (!ac || !bc) return 0;
+        var av = ac.dataset.val !== undefined ? ac.dataset.val : ac.textContent.trim();
+        var bv = bc.dataset.val !== undefined ? bc.dataset.val : bc.textContent.trim();
+        var an = parseFloat(av), bn = parseFloat(bv);
+        var cmp = (!isNaN(an) && !isNaN(bn)) ? an - bn : av.localeCompare(bv);
+        return cmp * dir;
+      });
+      dir *= -1;
+      rows.forEach(function(r) { tbody.appendChild(r); });
+      table.querySelectorAll('thead th').forEach(function(h) { h.classList.remove('sort-asc','sort-desc'); });
+      th.classList.add(dir === -1 ? 'sort-asc' : 'sort-desc');
+    });
+  });
+}
+
+// ── Generic heatmap renderer ──────────────────────────────────────
+// colorScale: 'diverging' (blue=neg, red=pos) | 'rank' (green=1, red=30) | 'rank-inv' (green=30, red=1)
+function renderHeatmap(wrap, rowLabels, colLabels, matrix, opts) {
+  opts = opts || {};
+  var colorScale = opts.colorScale || 'diverging';
+  var fmtFn = opts.fmt || function(v) { return (v > 0 ? '+' : '') + v.toFixed(2); };
+  var highlightRow = typeof opts.highlightRow === 'number' ? opts.highlightRow : -1;
+  var subtitle = opts.subtitle || '';
+
+  // Compute absMax for diverging scale
+  var allVals = [];
+  matrix.forEach(function(row) { row.forEach(function(v) { if (v !== null && !isNaN(v)) allVals.push(v); }); });
+  var absMax = allVals.length ? Math.max(Math.abs(Math.min.apply(null, allVals)), Math.abs(Math.max.apply(null, allVals))) : 1;
+  if (absMax === 0) absMax = 1;
+
+  function cellBg(v) {
+    if (v === null || isNaN(v)) return 'transparent';
+    if (colorScale === 'diverging') {
+      var t = Math.min(Math.abs(v) / absMax, 1);
+      if (v > 0) return 'rgba(255,60,60,' + (t * 0.75).toFixed(2) + ')';
+      return 'rgba(40,140,255,' + (t * 0.75).toFixed(2) + ')';
+    }
+    if (colorScale === 'rank' || colorScale === 'rank-inv') {
+      var norm = (v - 1) / 29; // 0 (rank1) → 1 (rank30)
+      if (colorScale === 'rank-inv') norm = 1 - norm;
+      // green (#00e676) → yellow → red (#ff1744)
+      var r = norm < 0.5 ? Math.round(norm * 2 * 255) : 255;
+      var g = norm < 0.5 ? 230 : Math.round((1 - (norm - 0.5) * 2) * 230);
+      return 'rgba(' + r + ',' + g + ',50,0.5)';
+    }
+    return 'transparent';
+  }
+
+  function cellTextColor(v) {
+    if (colorScale === 'rank' || colorScale === 'rank-inv') {
+      if (v <= 10) return '#00e676';
+      if (v >= 21) return '#ff5252';
+      return 'var(--muted)';
+    }
+    var t = absMax > 0 ? Math.abs(v) / absMax : 0;
+    return t > 0.35 ? 'var(--text)' : 'var(--muted)';
+  }
+
+  var html = '<table class="hm-tbl"><thead><tr>';
+  html += '<th class="hm-corner">' + escHtml(subtitle) + '</th>';
+  colLabels.forEach(function(c) {
+    html += '<th class="hm-col-hdr">' + escHtml(c) + '</th>';
+  });
+  html += '</tr></thead><tbody>';
+
+  rowLabels.forEach(function(label, ri) {
+    var isHL = ri === highlightRow;
+    html += '<tr' + (isHL ? ' class="hm-hl"' : '') + '>';
+    html += '<td class="hm-row-lbl" title="' + escHtml(label) + '">' + escHtml(label) + '</td>';
+    var row = matrix[ri] || [];
+    row.forEach(function(v) {
+      var bg = cellBg(v);
+      var tc = cellTextColor(v);
+      var display = (v === null || isNaN(v)) ? '—' : (colorScale === 'rank' || colorScale === 'rank-inv') ? v : fmtFn(v);
+      html += '<td class="hm-cell" style="background:' + bg + ';color:' + tc + ';">' + display + '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+// ── Section renderers ─────────────────────────────────────────────
+
+function renderPlayerStatsTable(data, playerName) {
+  var wrap = $id('insPlayerStatsWrap');
+  if (!data || !data.players) { wrap.innerHTML = '<div style="color:var(--red);font-family:DM Mono,monospace;font-size:10px;padding:12px 0;">Error loading player stats.</div>'; return; }
+
+  var players = data.players;
+  // Show top 20 by AST + selected player
+  var top20 = players.slice(0, 20);
+  var pNameLower = (playerName || '').toLowerCase();
+  var selectedInTop = top20.some(function(p) { return p.player.toLowerCase() === pNameLower; });
+  var selectedRow = players.find(function(p) { return p.player.toLowerCase() === pNameLower; });
+  if (!selectedInTop && selectedRow) top20 = [selectedRow].concat(top20);
+
+  var hasPotAst = top20.some(function(p) { return p.potential_ast !== null; });
+
+  var html = '<table class="ins-tbl" id="insPlayerStatsTbl"><thead><tr>'
+    + '<th>PLAYER</th><th>TEAM</th>'
+    + '<th title="Games played">GP</th>'
+    + '<th title="Minutes per game">MIN</th>'
+    + '<th title="Assists per game">AST</th>'
+    + '<th title="AST standard deviation">STD</th>'
+    + '<th title="Turnovers per game">TOV</th>'
+    + '<th title="Field goals made">FGM</th>'
+    + '<th title="Reliability = AST / STD">RELIABILITY</th>'
+    + (hasPotAst ? '<th title="Potential assists per game (tracking)">POT.AST</th>' : '')
+    + (hasPotAst ? '<th title="AST-to-pass conversion rate">CONV%</th>' : '')
+    + '</tr></thead><tbody>';
+
+  top20.forEach(function(p) {
+    var isSelected = p.player.toLowerCase() === pNameLower;
+    var relColor = p.reliability >= 4 ? 'var(--green)' : p.reliability >= 2 ? 'var(--text)' : 'var(--red)';
+    html += '<tr class="' + (isSelected ? 'ins-highlight' : '') + '">'
+      + '<td>' + escHtml(p.player) + '</td>'
+      + '<td>' + escHtml(p.team) + '</td>'
+      + '<td data-val="' + p.gp + '">' + p.gp + '</td>'
+      + '<td data-val="' + p.min + '">' + p.min.toFixed(1) + '</td>'
+      + '<td data-val="' + p.ast + '"><b>' + p.ast.toFixed(1) + '</b></td>'
+      + '<td data-val="' + p.ast_std + '">' + p.ast_std.toFixed(2) + '</td>'
+      + '<td data-val="' + p.tov + '">' + p.tov.toFixed(1) + '</td>'
+      + '<td data-val="' + p.fgm + '">' + p.fgm.toFixed(1) + '</td>'
+      + '<td data-val="' + p.reliability + '" style="color:' + relColor + ';">' + p.reliability.toFixed(2) + '</td>'
+      + (hasPotAst ? '<td data-val="' + (p.potential_ast || 0) + '">' + (p.potential_ast !== null ? p.potential_ast.toFixed(1) : '<span class="ins-null">—</span>') + '</td>' : '')
+      + (hasPotAst ? '<td data-val="' + (p.ast_to_pass_pct || 0) + '">' + (p.ast_to_pass_pct !== null ? (p.ast_to_pass_pct * 100).toFixed(1) + '%' : '<span class="ins-null">—</span>') + '</td>' : '')
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+  makeSortable(wrap.querySelector('table'));
+}
+
+function renderClusterHeatmap(clusterMatrix, playerName) {
+  var wrap = $id('insClusterHmWrap');
+  if (!clusterMatrix || !clusterMatrix.players) { wrap.innerHTML = ''; return; }
+  var hlIdx = clusterMatrix.players.findIndex(function(p) { return p.toLowerCase() === (playerName || '').toLowerCase(); });
+  renderHeatmap(wrap, clusterMatrix.players, clusterMatrix.clusters, clusterMatrix.matrix, {
+    colorScale: 'diverging',
+    fmt: function(v) { return (v > 0 ? '+' : '') + v.toFixed(2); },
+    highlightRow: hlIdx,
+    subtitle: 'AST EDGE',
+  });
+}
+
+function renderMatchupTable(perOpp, playerName) {
+  var wrap = $id('insMatchupTblWrap');
+  $id('insMatchupPlayerName').textContent = playerName || '—';
+  if (!perOpp || !perOpp.length) {
+    wrap.innerHTML = '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted2);padding:12px 0;">No opponent data (need ≥ 2 games vs opponent).</div>';
+    return;
+  }
+  var html = '<table class="ins-tbl" id="insMatchupTbl"><thead><tr>'
+    + '<th>OPP</th>'
+    + '<th>DEF CLUSTER</th>'
+    + '<th title="Games played vs this opponent">G</th>'
+    + '<th title="Average assists vs this opponent">AVG AST</th>'
+    + '<th title="AST above/below season average">EDGE</th>'
+    + '<th title="Standard deviation of assists">STD</th>'
+    + '<th title="Opponent defensive rating (lower = better defense)">DEF RTG</th>'
+    + '</tr></thead><tbody>';
+
+  perOpp.forEach(function(r) {
+    var edgeColor = r.avg_edge > 1 ? 'var(--green)' : r.avg_edge < -1 ? 'var(--red)' : 'var(--muted)';
+    var edgeStr = (r.avg_edge > 0 ? '+' : '') + r.avg_edge.toFixed(2);
+    html += '<tr>'
+      + '<td><b>' + escHtml(r.opp) + '</b></td>'
+      + '<td style="font-size:8px;">' + escHtml(r.def_cluster) + '</td>'
+      + '<td data-val="' + r.games + '">' + r.games + '</td>'
+      + '<td data-val="' + r.avg_ast + '">' + r.avg_ast.toFixed(1) + '</td>'
+      + '<td data-val="' + r.avg_edge + '" style="color:' + edgeColor + ';font-weight:500;">' + edgeStr + '</td>'
+      + '<td data-val="' + r.std_ast + '">' + r.std_ast.toFixed(2) + '</td>'
+      + '<td data-val="' + (r.def_rating || 999) + '">' + (r.def_rating !== null ? r.def_rating.toFixed(1) : '—') + '</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+  makeSortable(wrap.querySelector('table'));
+}
+
+function renderCoefHeatmap(coefData, playerName) {
+  var wrap = $id('insCoefHmWrap');
+  if (!coefData || !coefData.players) { wrap.innerHTML = ''; return; }
+  var hlIdx = coefData.players.findIndex(function(p) { return p.toLowerCase() === (playerName || '').toLowerCase(); });
+  // Annotate player labels with R²
+  var rowLabels = coefData.players.map(function(p, i) {
+    var r2 = coefData.r2 && coefData.r2[i] !== undefined ? ' (R²=' + coefData.r2[i].toFixed(2) + ')' : '';
+    return p + r2;
+  });
+  renderHeatmap(wrap, rowLabels, coefData.play_types, coefData.matrix, {
+    colorScale: 'diverging',
+    fmt: function(v) { return v.toFixed(3); },
+    highlightRow: hlIdx,
+    subtitle: 'COEF',
+  });
+}
+
+function showRankings(mode) {
+  $id('rankTogOff').classList.toggle('active', mode === 'offense');
+  $id('rankTogDef').classList.toggle('active', mode === 'defense');
+  var wrap = $id('insRankingsWrap');
+  if (!_insightsRanksData) {
+    wrap.innerHTML = '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted2);padding:12px 0;">Load a player first to see rankings.</div>';
+    return;
+  }
+  var d = _insightsRanksData;
+  var ranks = mode === 'offense' ? d.offense_ranks : d.defense_ranks;
+  var pppVals = mode === 'offense' ? d.offense_ppp : d.defense_ppp;
+  // For defense: rank 1 = best defender (lowest PPP allowed) → green. rank-inv not needed, rank coloring works as-is.
+  renderHeatmap(wrap, d.teams, d.play_types, ranks, {
+    colorScale: 'rank',
+    highlightRow: -1,
+    subtitle: mode === 'offense' ? 'OFF RANK' : 'DEF RANK',
+  });
+}
+
+// ── Main fetch ────────────────────────────────────────────────────
+async function loadInsights(playerName) {
+  _insightsLoaded = true; // prevent double-load
+
+  // Show loading state in all sections
+  ['insPlayerStatsWrap','insClusterHmWrap','insMatchupTblWrap','insCoefHmWrap','insRankingsWrap'].forEach(function(id) {
+    $id(id).innerHTML = '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--muted2);padding:16px 0;text-align:center;">'
+      + '<span style="color:var(--cyan);">↻</span> Loading…</div>';
+  });
+
+  try {
+    var results = await Promise.allSettled([
+      fetch(API_BASE + '/api/analysis/player-stats', {signal: AbortSignal.timeout(30000)}).then(function(r){return r.json();}),
+      fetch(API_BASE + '/api/analysis/assist-matchup?player=' + encodeURIComponent(playerName), {signal: AbortSignal.timeout(30000)}).then(function(r){return r.json();}),
+      fetch(API_BASE + '/api/analysis/coef-matrix?player=' + encodeURIComponent(playerName), {signal: AbortSignal.timeout(60000)}).then(function(r){return r.json();}),
+      fetch(API_BASE + '/api/analysis/synergy-ranks', {signal: AbortSignal.timeout(30000)}).then(function(r){return r.json();}),
+    ]);
+
+    var stats   = results[0].status === 'fulfilled' ? results[0].value : null;
+    var matchup = results[1].status === 'fulfilled' ? results[1].value : null;
+    var coef    = results[2].status === 'fulfilled' ? results[2].value : null;
+    var ranks   = results[3].status === 'fulfilled' ? results[3].value : null;
+
+    var errFor = function(id, label, res) {
+      if (res.status === 'rejected') {
+        $id(id).innerHTML = '<div style="font-family:DM Mono,monospace;font-size:9px;color:var(--red);padding:8px 0;">' + label + ' failed: ' + escHtml(String(res.reason)) + '</div>';
+        return true;
+      }
+      if (res.value && res.value.error) {
+        $id(id).innerHTML = '<div style="font-family:DM Mono,monospace;font-size:9px;color:var(--red);padding:8px 0;">' + label + ' error: ' + escHtml(res.value.error) + '</div>';
+        return true;
+      }
+      return false;
+    };
+
+    if (!errFor('insPlayerStatsWrap',  'Stats',    results[0])) renderPlayerStatsTable(stats, playerName);
+    if (!errFor('insClusterHmWrap',    'Matchup',  results[1])) renderClusterHeatmap(matchup ? matchup.cluster_matrix : null, playerName);
+    if (!errFor('insMatchupTblWrap',   'Matchup',  results[1])) renderMatchupTable(matchup ? matchup.per_opponent : null, playerName);
+    if (!errFor('insCoefHmWrap',       'Coef',     results[2])) renderCoefHeatmap(coef, playerName);
+    if (!errFor('insRankingsWrap',     'Rankings', results[3])) {
+      _insightsRanksData = ranks;
+      showRankings('offense');
+    }
+  } catch(e) {
+    var errMsg = '<div style="font-family:DM Mono,monospace;font-size:9px;color:var(--red);padding:8px 0;">Failed: ' + escHtml(String(e)) + '</div>';
+    ['insPlayerStatsWrap','insClusterHmWrap','insMatchupTblWrap','insCoefHmWrap','insRankingsWrap'].forEach(function(id) { $id(id).innerHTML = errMsg; });
+  }
+}
+
+// ── Refresh button ────────────────────────────────────────────────
+var _refreshPollInterval = null;
+
+async function triggerRefresh() {
+  var btn = $id('refreshBtn');
+  var lbl = $id('refreshStatusLbl');
+  try {
+    var r = await fetch(API_BASE + '/api/analysis/refresh', {method:'POST', signal: AbortSignal.timeout(5000)});
+    var d = await r.json();
+    if (d.status === 'already_running') {
+      lbl.textContent = 'Already running…';
+      startRefreshPoll();
+      return;
+    }
+    btn.classList.add('running');
+    btn.textContent = '↻ RUNNING…';
+    lbl.textContent = 'Est. 5–10 min';
+    startRefreshPoll();
+  } catch(e) {
+    lbl.textContent = 'Error: ' + e.message;
+  }
+}
+
+function startRefreshPoll() {
+  if (_refreshPollInterval) return;
+  _refreshPollInterval = setInterval(async function() {
+    try {
+      var r = await fetch(API_BASE + '/api/analysis/refresh-status', {signal: AbortSignal.timeout(3000)});
+      var d = await r.json();
+      var btn = $id('refreshBtn');
+      var lbl = $id('refreshStatusLbl');
+      if (d.status === 'idle') {
+        clearInterval(_refreshPollInterval);
+        _refreshPollInterval = null;
+        btn.classList.remove('running');
+        btn.textContent = '↻ REFRESH ANALYSIS';
+        lbl.textContent = d.last ? 'Last: ' + d.last.slice(0,16).replace('T',' ') : 'Done';
+        // Reload insights if INSIGHTS tab is currently active
+        if (_insightsPlayerName && document.querySelector('.tab[data-t="insights"]').classList.contains('active')) {
+          _insightsLoaded = false;
+          loadInsights(_insightsPlayerName);
+        }
+      } else if (d.status === 'error') {
+        clearInterval(_refreshPollInterval);
+        _refreshPollInterval = null;
+        btn.classList.remove('running');
+        btn.textContent = '↻ REFRESH ANALYSIS';
+        lbl.textContent = 'Error — check server log';
+      }
+    } catch(e) { /* ignore poll errors */ }
+  }, 10000);
+}
+
+// Poll status on load (in case refresh was already in progress)
+document.addEventListener('DOMContentLoaded', function() {
+  fetch(API_BASE + '/api/analysis/refresh-status', {signal: AbortSignal.timeout(2000)})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if (d.status === 'running') {
+        $id('refreshBtn').classList.add('running');
+        $id('refreshBtn').textContent = '↻ RUNNING…';
+        $id('refreshStatusLbl').textContent = 'Est. 5–10 min';
+        startRefreshPoll();
+      } else if (d.last) {
+        $id('refreshStatusLbl').textContent = 'Last: ' + d.last.slice(0,16).replace('T',' ');
+      }
+    })
+    .catch(function(){});
+});
 </script>
 </body>
 </html>

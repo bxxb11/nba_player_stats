@@ -8,9 +8,16 @@ import datetime
 import heapq
 import itertools
 import math
+import os
+import pickle
+import subprocess
+import threading
 import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import numpy as np
+import pandas as pd
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -76,6 +83,10 @@ CORS(app)
 
 SEASON = "2025-26"
 SEASON_TYPE = "Regular Season"
+_TEAM_ANALYSIS_DIR = "team_analysis"
+
+_insights_cache = {}
+_refresh_status = {"status": "idle", "last": None, "error": None}
 
 _team_profiles_cache = {"data": None, "ts": 0}
 _TEAM_PROFILES_TTL = 14400  # 4 hours
@@ -356,10 +367,10 @@ def find_player(name: str):
     return matches[0] if matches else None
 
 
-def parse_game_log(gl_df):
+def parse_game_log(gl_df, playoff=False):
     """Parse a PlayerGameLog DataFrame into standardized game dicts (newest-first).
-    Returns list of dicts with date, opp, home, b2b, wl, min, pts, 3pm, fg3a,
-    reb, oreb, dreb, ast, stl, blk, tov, pm, fgm, fga, fg_pct, ftm, fta,
+    Returns list of dicts with date, opp, home, b2b, playoff, wl, min, pts, 3pm,
+    fg3a, reb, oreb, dreb, ast, stl, blk, tov, pm, fgm, fga, fg_pct, ftm, fta,
     ft_pct, fg3_pct, pf, usg.
     """
     games = []
@@ -380,32 +391,33 @@ def parse_game_log(gl_df):
             date_iso = raw_date
 
         games.append({
-            "date":  date_iso,
-            "opp":   opp,
-            "home":  is_home,
-            "b2b":   False,
-            "wl":    str(g.get("WL", "")),
-            "min":   parse_min(g.get("MIN", 0)),
-            "pts":   safe_int(g.get("PTS")),
-            "3pm":   safe_int(g.get("FG3M")),
-            "fg3a":  safe_int(g.get("FG3A")),
-            "reb":   safe_int(g.get("REB")),
-            "oreb":  safe_int(g.get("OREB")),
-            "dreb":  safe_int(g.get("DREB")),
-            "ast":   safe_int(g.get("AST")),
-            "stl":   safe_int(g.get("STL")),
-            "blk":   safe_int(g.get("BLK")),
-            "tov":   safe_int(g.get("TOV")),
-            "pm":    safe_int(g.get("PLUS_MINUS")),
-            "fgm":   safe_int(g.get("FGM")),
-            "fga":   safe_int(g.get("FGA")),
+            "date":   date_iso,
+            "opp":    opp,
+            "home":   is_home,
+            "b2b":    False,
+            "playoff": playoff,
+            "wl":     str(g.get("WL", "")),
+            "min":    parse_min(g.get("MIN", 0)),
+            "pts":    safe_int(g.get("PTS")),
+            "3pm":    safe_int(g.get("FG3M")),
+            "fg3a":   safe_int(g.get("FG3A")),
+            "reb":    safe_int(g.get("REB")),
+            "oreb":   safe_int(g.get("OREB")),
+            "dreb":   safe_int(g.get("DREB")),
+            "ast":    safe_int(g.get("AST")),
+            "stl":    safe_int(g.get("STL")),
+            "blk":    safe_int(g.get("BLK")),
+            "tov":    safe_int(g.get("TOV")),
+            "pm":     safe_int(g.get("PLUS_MINUS")),
+            "fgm":    safe_int(g.get("FGM")),
+            "fga":    safe_int(g.get("FGA")),
             "fg_pct": safe_float(g.get("FG_PCT"), 3),
-            "ftm":   safe_int(g.get("FTM")),
-            "fta":   safe_int(g.get("FTA")),
+            "ftm":    safe_int(g.get("FTM")),
+            "fta":    safe_int(g.get("FTA")),
             "ft_pct": safe_float(g.get("FT_PCT"), 3),
             "fg3_pct": safe_float(g.get("FG3_PCT"), 3),
-            "pf":    safe_int(g.get("PF")),
-            "usg":   0,
+            "pf":     safe_int(g.get("PF")),
+            "usg":    0,
         })
 
     # mark back-to-backs (array is newest-first)
@@ -741,7 +753,7 @@ def player_stats():
         jersey    = str(meta.get("JERSEY", ""))
         time.sleep(0.6)
 
-        # 3 · full-season game log (all games, newest-first)
+        # 3 · full-season game log (Regular Season, newest-first)
         gl_ep = nba_call(lambda: PlayerGameLog(
             player_id=player_id,
             season=SEASON,
@@ -750,8 +762,24 @@ def player_stats():
         ))
         gl_df = gl_ep.player_game_log.get_data_frame()
 
-        # 4 · parse ALL season games (using shared helper)
-        games = parse_game_log(gl_df)
+        # 3b · playoff game log (silently skip if playoffs haven't started)
+        try:
+            time.sleep(0.3)
+            gl_po_ep = nba_call(lambda: PlayerGameLog(
+                player_id=player_id,
+                season=SEASON,
+                season_type_all_star="Playoffs",
+                timeout=20,
+            ))
+            gl_po_df = gl_po_ep.player_game_log.get_data_frame()
+        except Exception:
+            gl_po_df = None
+
+        # 4 · parse and merge — playoffs first (most recent), then regular season
+        games_rs = parse_game_log(gl_df, playoff=False)
+        games_po = parse_game_log(gl_po_df, playoff=True) if gl_po_df is not None and not gl_po_df.empty else []
+        # Sort combined list newest-first by date
+        games = sorted(games_po + games_rs, key=lambda g: g["date"], reverse=True)
 
         # 5 · season averages from full game log
         if not gl_df.empty:
@@ -1301,6 +1329,330 @@ def schedule():
     for g in games:
         by_date.setdefault(g["date"], []).append(g)
     return jsonify({"season": SEASON, "dates": by_date, "totalGames": len(games)})
+
+
+# ── INSIGHTS helpers ────────────────────────────────────────────────────────
+
+def _load_game_logs():
+    if "game_logs" not in _insights_cache:
+        path = os.path.join(_TEAM_ANALYSIS_DIR, "ast_game_logs_2025_26.pkl")
+        with open(path, "rb") as f:
+            _insights_cache["game_logs"] = pickle.load(f)
+    return _insights_cache["game_logs"]
+
+
+def _load_synergy(kind):
+    key = f"synergy_{kind}"
+    if key not in _insights_cache:
+        path = os.path.join(_TEAM_ANALYSIS_DIR, f"synergy_{kind}_2025-26.csv")
+        _insights_cache[key] = pd.read_csv(path)
+    return _insights_cache[key]
+
+
+def _derive_matchup_cols(df):
+    """Add OPP_ABB, IS_HOME, PLAYER_TEAM_ABB from MATCHUP string if missing."""
+    if "OPP_ABB" not in df.columns:
+        df = df.copy()
+        m = df["MATCHUP"].astype(str)
+        df["IS_HOME"] = m.str.contains(r"vs\.", na=False, regex=True)
+        df["PLAYER_TEAM_ABB"] = m.str[:3]
+        df["OPP_ABB"] = m.str.split().str[-1]
+    return df
+
+
+def _compute_defensive_clusters():
+    if "def_clusters" not in _insights_cache:
+        from sklearn.cluster import KMeans
+        from sklearn.preprocessing import StandardScaler
+
+        df = _load_synergy("defense")
+        ppp = df.pivot_table(index="TEAM_ABBREVIATION", columns="PLAY_TYPE", values="PPP")
+        ppp = ppp.fillna(ppp.mean())
+        ranked = ppp.rank(axis=0)
+        X = StandardScaler().fit_transform(ranked)
+        km = KMeans(n_clusters=6, random_state=42, n_init=20).fit(X)
+
+        adv = pd.read_csv(os.path.join(_TEAM_ANALYSIS_DIR, "team_advanced_2025-26.csv"))
+        adv = adv.set_index("TEAM_ABBREVIATION")
+        labels = pd.Series(km.labels_, index=ppp.index)
+        cluster_def = labels.to_frame("cluster").join(adv[["DEF_RATING"]])
+        means = cluster_def.groupby("cluster")["DEF_RATING"].mean().sort_values()
+        rank_map = {c: i for i, c in enumerate(means.index)}
+        tier_names = ["Elite-DEF", "Strong-DEF", "Avg-DEF", "Avg-DEF+", "Soft-DEF", "Porous-DEF"]
+        name_map = {c: tier_names[rank_map[c]] for c in means.index}
+        _insights_cache["def_clusters"] = labels.map(name_map).to_dict()
+    return _insights_cache["def_clusters"]
+
+
+def _safe_float(v):
+    try:
+        f = float(v)
+        return None if (f != f) else f  # NaN check
+    except Exception:
+        return None
+
+
+def _norm_name(name):
+    """Strip accents for fuzzy player-name matching (Dončić → doncic)."""
+    import unicodedata
+    return unicodedata.normalize("NFKD", str(name)).encode("ascii", "ignore").decode().lower().strip()
+
+
+def _match_player(gl, player_name):
+    """Return mask matching player_name against PLAYER_NAME column, accent-insensitive."""
+    target = _norm_name(player_name)
+    return gl["PLAYER_NAME"].map(_norm_name) == target
+
+
+def _find_player_name(player_ast_avg, player_name):
+    """Find the exact pkl player name that matches player_name (accent-insensitive)."""
+    target = _norm_name(player_name)
+    return next((n for n in player_ast_avg if _norm_name(n) == target), None)
+
+
+# ── INSIGHTS endpoints ───────────────────────────────────────────────────────
+
+@app.route("/api/analysis/player-stats")
+def analysis_player_stats():
+    """Season aggregates for all players in pkl + reliability profiles."""
+    try:
+        gl = _derive_matchup_cols(_load_game_logs())
+        agg = gl.groupby(["PLAYER_ID", "PLAYER_NAME"]).agg(
+            GP=("AST", "count"),
+            MIN=("MIN_float", "mean"),
+            AST=("AST", "mean"),
+            AST_std=("AST", "std"),
+            TOV=("TOV", "mean"),
+            FGM=("FGM", "mean"),
+            FGA=("FGA", "mean"),
+            TEAM=("PLAYER_TEAM_ABB", "first"),
+        ).reset_index()
+        agg["reliability"] = (agg["AST"] / (agg["AST_std"] + 0.01)).round(2)
+
+        pot_path = os.path.join(_TEAM_ANALYSIS_DIR, "player_passing_stats_2025-26.csv")
+        if os.path.exists(pot_path):
+            pot = pd.read_csv(pot_path)[["PLAYER_ID", "POTENTIAL_AST", "PASSES_MADE", "AST_TO_PASS_PCT"]]
+            agg = agg.merge(pot, on="PLAYER_ID", how="left")
+        else:
+            for c in ("POTENTIAL_AST", "PASSES_MADE", "AST_TO_PASS_PCT"):
+                agg[c] = None
+
+        agg = agg.sort_values("AST", ascending=False)
+
+        rows = []
+        for _, r in agg.iterrows():
+            rows.append({
+                "player_id": int(r["PLAYER_ID"]),
+                "player": str(r["PLAYER_NAME"]),
+                "team": str(r["TEAM"]),
+                "gp": int(r["GP"]),
+                "min": round(float(r["MIN"]), 1),
+                "ast": round(float(r["AST"]), 1),
+                "ast_std": round(float(r["AST_std"]), 2) if _safe_float(r["AST_std"]) is not None else 0.0,
+                "tov": round(float(r["TOV"]), 1),
+                "fgm": round(float(r["FGM"]), 1),
+                "fga": round(float(r["FGA"]), 1),
+                "reliability": round(float(r["reliability"]), 2),
+                "potential_ast": round(_safe_float(r["POTENTIAL_AST"]), 1) if _safe_float(r["POTENTIAL_AST"]) is not None else None,
+                "passes_made": round(_safe_float(r["PASSES_MADE"]), 1) if _safe_float(r["PASSES_MADE"]) is not None else None,
+                "ast_to_pass_pct": round(_safe_float(r["AST_TO_PASS_PCT"]), 3) if _safe_float(r["AST_TO_PASS_PCT"]) is not None else None,
+            })
+        return jsonify({"players": rows})
+    except Exception as e:
+        return jsonify({"error": str(e), "detail": traceback.format_exc()}), 500
+
+
+@app.route("/api/analysis/assist-matchup")
+def analysis_assist_matchup():
+    """Per-opponent breakdown for a player + cluster heatmap for top players."""
+    player_name = request.args.get("player", "").strip()
+    try:
+        gl = _derive_matchup_cols(_load_game_logs()).copy()
+        player_ast_avg = gl.groupby("PLAYER_NAME")["AST"].mean().to_dict()
+        gl["AST_edge"] = gl["AST"] - gl["PLAYER_NAME"].map(player_ast_avg)
+        clusters = _compute_defensive_clusters()
+        gl["DEF_CLUSTER"] = gl["OPP_ABB"].map(clusters).fillna("Unknown")
+
+        adv = pd.read_csv(os.path.join(_TEAM_ANALYSIS_DIR, "team_advanced_2025-26.csv"))
+        def_rating_map = adv.set_index("TEAM_ABBREVIATION")["DEF_RATING"].to_dict()
+
+        # Part A: per-opponent for selected player
+        per_opp = []
+        if player_name:
+            pgl = gl[_match_player(gl, player_name)]
+            if not pgl.empty:
+                grp = pgl.groupby("OPP_ABB").agg(
+                    games=("AST", "count"),
+                    avg_ast=("AST", "mean"),
+                    avg_edge=("AST_edge", "mean"),
+                    std_ast=("AST", "std"),
+                ).reset_index()
+                grp = grp[grp["games"] >= 2].sort_values("avg_edge", ascending=False)
+                for _, r in grp.iterrows():
+                    opp = str(r["OPP_ABB"])
+                    dr = _safe_float(def_rating_map.get(opp))
+                    per_opp.append({
+                        "opp": opp,
+                        "games": int(r["games"]),
+                        "avg_ast": round(float(r["avg_ast"]), 1),
+                        "avg_edge": round(float(r["avg_edge"]), 2),
+                        "std_ast": round(float(r["std_ast"]), 2) if _safe_float(r["std_ast"]) is not None else 0.0,
+                        "def_cluster": clusters.get(opp, "Unknown"),
+                        "def_rating": round(dr, 1) if dr is not None else None,
+                    })
+
+        # Part B: cluster heatmap for top 20 + selected player
+        top20 = [n for n, _ in sorted(player_ast_avg.items(), key=lambda x: -x[1])[:20]]
+        if player_name:
+            match = _find_player_name(player_ast_avg, player_name)
+            if match and match not in top20:
+                top20 = [match] + top20
+
+        hgl = gl[gl["PLAYER_NAME"].isin(top20)]
+        pivot = hgl.groupby(["PLAYER_NAME", "DEF_CLUSTER"])["AST_edge"].mean().unstack(fill_value=0)
+
+        def row_sort(name):
+            if player_name and _norm_name(name) == _norm_name(player_name):
+                return -9999
+            return -player_ast_avg.get(name, 0)
+
+        ordered = sorted(pivot.index, key=row_sort)
+        pivot = pivot.loc[ordered]
+        col_order = ["Elite-DEF", "Strong-DEF", "Avg-DEF", "Avg-DEF+", "Soft-DEF", "Porous-DEF"]
+        cols = [c for c in col_order if c in pivot.columns] + [c for c in pivot.columns if c not in col_order]
+        pivot = pivot[cols]
+
+        return jsonify({
+            "per_opponent": per_opp,
+            "cluster_matrix": {
+                "players": list(pivot.index),
+                "clusters": list(pivot.columns),
+                "matrix": [[round(float(v), 2) for v in row] for row in pivot.values],
+            },
+        })
+    except Exception as e:
+        return jsonify({"error": str(e), "detail": traceback.format_exc()}), 500
+
+
+@app.route("/api/analysis/coef-matrix")
+def analysis_coef_matrix():
+    """Ridge coefficient matrix: (top players + selected) × play-type defense."""
+    player_name = request.args.get("player", "").strip()
+    try:
+        from sklearn.linear_model import Ridge
+        from sklearn.metrics import r2_score
+
+        gl = _derive_matchup_cols(_load_game_logs()).copy()
+        player_ast_avg = gl.groupby("PLAYER_NAME")["AST"].mean().to_dict()
+        gl["AST_edge"] = gl["AST"] - gl["PLAYER_NAME"].map(player_ast_avg)
+
+        df_def = _load_synergy("defense")
+        def_ppp = df_def.pivot_table(index="TEAM_ABBREVIATION", columns="PLAY_TYPE", values="PPP")
+        pt_cols = ["DEF_PPP_" + c for c in def_ppp.columns]
+        def_ppp.columns = pt_cols
+        gl = gl.join(def_ppp, on="OPP_ABB")
+
+        top15 = [n for n, _ in sorted(player_ast_avg.items(), key=lambda x: -x[1])[:15]]
+        if player_name:
+            match = _find_player_name(player_ast_avg, player_name)
+            if match and match not in top15:
+                top15 = [match] + top15
+
+        def row_sort(name):
+            if player_name and _norm_name(name) == _norm_name(player_name):
+                return -9999
+            return -player_ast_avg.get(name, 0)
+
+        top15 = sorted(top15, key=row_sort)
+        coef_rows, r2_list = [], []
+
+        for pname in top15:
+            pgl = gl[gl["PLAYER_NAME"] == pname].dropna(subset=pt_cols)
+            if len(pgl) < 10:
+                coef_rows.append([0.0] * len(pt_cols))
+                r2_list.append(0.0)
+                continue
+            X = pgl[pt_cols].values
+            y = pgl["AST_edge"].values
+            ridge = Ridge(alpha=1.0).fit(X, y)
+            pred = ridge.predict(X)
+            r2 = float(r2_score(y, pred))
+            coef_rows.append([round(float(c), 3) for c in ridge.coef_])
+            r2_list.append(round(r2, 3))
+
+        return jsonify({
+            "players": top15,
+            "play_types": [c.replace("DEF_PPP_", "") for c in pt_cols],
+            "matrix": coef_rows,
+            "r2": r2_list,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e), "detail": traceback.format_exc()}), 500
+
+
+@app.route("/api/analysis/synergy-ranks")
+def analysis_synergy_ranks():
+    """30 teams × 11 play types — offensive and defensive rank matrices."""
+    try:
+        df_off = _load_synergy("offense")
+        df_def = _load_synergy("defense")
+
+        off_ppp = df_off.pivot_table(index="TEAM_ABBREVIATION", columns="PLAY_TYPE", values="PPP")
+        def_ppp = df_def.pivot_table(index="TEAM_ABBREVIATION", columns="PLAY_TYPE", values="PPP")
+        play_types = sorted(set(off_ppp.columns) & set(def_ppp.columns))
+        off_ppp = off_ppp[play_types]
+        def_ppp = def_ppp[play_types]
+
+        off_ranks = off_ppp.rank(axis=0, ascending=False).fillna(15).astype(int)
+        def_ranks = def_ppp.rank(axis=0, ascending=True).fillna(15).astype(int)
+        teams = sorted(off_ranks.index)
+        off_ranks = off_ranks.loc[teams]
+        def_ranks = def_ranks.loc[teams]
+
+        return jsonify({
+            "teams": teams,
+            "play_types": list(play_types),
+            "offense_ranks": off_ranks.values.tolist(),
+            "defense_ranks": def_ranks.values.tolist(),
+            "offense_ppp": [[round(float(v), 3) for v in row] for row in off_ppp.loc[teams].values],
+            "defense_ppp": [[round(float(v), 3) for v in row] for row in def_ppp.loc[teams].values],
+        })
+    except Exception as e:
+        return jsonify({"error": str(e), "detail": traceback.format_exc()}), 500
+
+
+@app.route("/api/analysis/refresh", methods=["POST"])
+def analysis_refresh_ep():
+    """Trigger re-execution of all analysis notebooks in background."""
+    if _refresh_status["status"] == "running":
+        return jsonify({"status": "already_running"})
+
+    def _run():
+        _refresh_status["status"] = "running"
+        _refresh_status["error"] = None
+        for nb in [
+            os.path.join(_TEAM_ANALYSIS_DIR, "assist_prediction_analysis.ipynb"),
+            os.path.join(_TEAM_ANALYSIS_DIR, "assist_matchup_analysis.ipynb"),
+            os.path.join(_TEAM_ANALYSIS_DIR, "preliminary_synergy_team_analysis.ipynb"),
+        ]:
+            r = subprocess.run(
+                ["jupyter", "nbconvert", "--to", "notebook", "--execute",
+                 "--inplace", "--ExecutePreprocessor.timeout=600", nb],
+                capture_output=True, text=True,
+            )
+            if r.returncode != 0:
+                _refresh_status.update({"status": "error", "error": r.stderr[-500:]})
+                return
+        _insights_cache.clear()
+        _refresh_status.update({"status": "idle", "last": datetime.datetime.now().isoformat(), "error": None})
+
+    threading.Thread(target=_run, daemon=True).start()
+    return jsonify({"status": "started"})
+
+
+@app.route("/api/analysis/refresh-status")
+def analysis_refresh_status_ep():
+    return jsonify(_refresh_status)
 
 
 if __name__ == "__main__":
